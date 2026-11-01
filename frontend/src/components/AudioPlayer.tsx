@@ -16,17 +16,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
   const currentTrackId = currentTrack?.id;
   const audioSrc = currentTrack?.audio_url;
 
-  // Synchronization calculation
+  // Synchronization calculation with timezone-safe UTC parsing
+  const parseUtcDate = (dateStr?: string | null): number => {
+    if (!dateStr) return 0;
+    const isoStr = dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+    const parsed = new Date(isoStr).getTime();
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const getExpectedPositionSeconds = (): number => {
     if (!playbackState) return 0;
     if (playbackState.status !== 'playing' || !playbackState.started_at) {
       return (playbackState.position_ms || 0) / 1000;
     }
-    const startedAtMs = new Date(playbackState.started_at).getTime();
+    const startedAtMs = parseUtcDate(playbackState.started_at);
     const nowMs = Date.now();
-    const elapsedSec = (nowMs - startedAtMs) / 1000;
-    const currentSec = (playbackState.position_ms / 1000) + (elapsedSec * (playbackState.playback_rate || 1.0));
+    const rawElapsedSec = (nowMs - startedAtMs) / 1000;
     const durationSec = (currentTrack?.duration_ms || 0) / 1000;
+    const elapsedSec = (rawElapsedSec > 0 && (durationSec === 0 || rawElapsedSec < durationSec + 10)) ? rawElapsedSec : 0;
+    const currentSec = (playbackState.position_ms / 1000) + (elapsedSec * (playbackState.playback_rate || 1.0));
     return durationSec > 0 ? Math.min(currentSec, durationSec) : currentSec;
   };
 

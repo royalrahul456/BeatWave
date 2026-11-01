@@ -36,24 +36,36 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
   const [volume, setVolume] = useState(85);
   const [showVolume, setShowVolume] = useState(false);
 
-  // Smooth local scrubber ticker
+  // Smooth local scrubber ticker with safe UTC parsing
   const [displayPositionMs, setDisplayPositionMs] = useState(0);
+
+  const parseUtcDate = (dateStr?: string | null): number => {
+    if (!dateStr) return 0;
+    const isoStr = dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+    const parsed = new Date(isoStr).getTime();
+    return isNaN(parsed) ? 0 : parsed;
+  };
 
   useEffect(() => {
     if (!playback) return;
 
     const basePositionMs = playback.position_ms || 0;
-    const startedAt = playback.started_at ? new Date(playback.started_at).getTime() : 0;
+    const startedAt = parseUtcDate(playback.started_at);
     const rate = playback.playback_rate || 1.0;
+    const duration = track?.duration_ms || 240000;
 
     if (playback.status === 'playing' && startedAt > 0) {
-      const interval = setInterval(() => {
+      const updatePosition = () => {
         const now = Date.now();
-        const elapsed = (now - startedAt) * rate;
+        const rawElapsed = (now - startedAt) * rate;
+        // Guard against timezone clock skew jumps (> 1 hour or negative)
+        const elapsed = (rawElapsed > 0 && rawElapsed < duration + 10000) ? rawElapsed : 0;
         const current = basePositionMs + elapsed;
-        const duration = track?.duration_ms || current;
-        setDisplayPositionMs(Math.min(current, duration));
-      }, 150);
+        setDisplayPositionMs(Math.max(0, Math.min(current, duration)));
+      };
+
+      updatePosition();
+      const interval = setInterval(updatePosition, 200);
       return () => clearInterval(interval);
     } else {
       setDisplayPositionMs(basePositionMs);

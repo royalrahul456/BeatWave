@@ -142,25 +142,29 @@ class QueueService:
             select(PlaybackState).where(PlaybackState.room_id == room_id)
         )
         playback = pb_res.scalar_one_or_none()
-        should_play = play_now or (playback and (playback.status in ["idle", "stopped"] or not playback.current_queue_item_id))
-        if playback and should_play:
-            if playback.current_queue_item_id:
+        is_idle = playback is None or playback.status in ["idle", "stopped"] or not playback.current_queue_item_id
+        if is_idle or play_now:
+            if playback and playback.current_queue_item_id:
                 prev_item = await db.get(QueueItem, playback.current_queue_item_id)
                 if prev_item:
                     prev_item.status = "played"
             queue_item.status = "current"
             queue_item.position = 0
-            playback.current_queue_item_id = queue_item.id
-            playback.status = "playing"
-            playback.position_ms = 0
-            playback.started_at = utc_now()
-            playback.paused_at = None
-            playback.version += 1
+            if playback:
+                playback.current_queue_item_id = queue_item.id
+                playback.status = "playing"
+                playback.position_ms = 0
+                playback.started_at = utc_now()
+                playback.paused_at = None
+                playback.version += 1
             room.status = "playing"
             room.current_track_id = track.id
             await db.flush()
+            msg = "Playing now!"
+        else:
+            msg = f"Added #{queue_item.position} in upcoming queue"
 
-        return True, "Added to queue", queue_item
+        return True, msg, queue_item
 
     @staticmethod
     async def get_queue(

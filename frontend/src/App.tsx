@@ -211,7 +211,7 @@ export const App: React.FC = () => {
   }, [room?.id, token]);
 
   // Add Track Request API
-  const handleRequestTrack = useCallback(async (provider: string, trackId: string) => {
+  const handleRequestTrack = useCallback(async (provider: string, trackId: string, playNow: boolean = false) => {
     if (!room?.id || !token) return { success: false, message: 'Room not connected' };
     try {
       const res = await fetch(`/api/v1/rooms/${room.id}/requests`, {
@@ -220,7 +220,7 @@ export const App: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ provider, provider_track_id: trackId })
+        body: JSON.stringify({ provider, provider_track_id: trackId, play_now: playNow })
       });
       const data = await res.json();
       if (res.ok) {
@@ -236,7 +236,7 @@ export const App: React.FC = () => {
         });
         if (roomRes.ok) setRoom(await roomRes.json());
 
-        return { success: true, message: 'Added to room queue!' };
+        return { success: true, message: playNow ? 'Playing now!' : 'Added to upcoming queue!' };
       }
       return { success: false, message: data.detail || 'Failed to add track' };
     } catch (e: any) {
@@ -246,7 +246,7 @@ export const App: React.FC = () => {
 
   // Direct select track and switch immediately to Now Playing
   const handleSelectTrackDirect = async (track: Track) => {
-    await handleRequestTrack(track.provider, track.provider_track_id);
+    await handleRequestTrack(track.provider, track.provider_track_id, true);
     setActiveTab('now_playing');
   };
 
