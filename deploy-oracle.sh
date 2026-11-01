@@ -6,25 +6,25 @@ echo "      🌊 BeatWave — Oracle Cloud Free Tier Auto Deploy     "
 echo "=========================================================="
 
 # 1. Update OS and install basic packages
-echo "[1/6] Updating system and installing dependencies..."
+echo "[1/7] Updating system and installing dependencies..."
 sudo apt-get update -y
 sudo apt-get install -y curl git ufw iptables-persistent
 
-# 2. Open Oracle Cloud iptables firewall for Ports 80 and 443
-echo "[2/6] Configuring Oracle Linux firewall (Ports 80 & 443)..."
+# 2. Open Oracle Linux firewall for Ports 80 and 443
+echo "[2/7] Configuring Oracle Linux firewall (Ports 80 & 443)..."
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT 2>/dev/null || true
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
 sudo netfilter-persistent save 2>/dev/null || true
 
 # 3. Install Docker & Docker Compose if not installed
 if ! command -v docker &> /dev/null; then
-    echo "[3/6] Installing Docker..."
+    echo "[3/7] Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
     sudo usermod -aG docker "$USER"
     rm get-docker.sh
 else
-    echo "[3/6] Docker is already installed."
+    echo "[3/7] Docker is already installed."
 fi
 
 # 4. Detect public IP if domain is not provided
@@ -35,10 +35,10 @@ if [ -z "$DOMAIN" ]; then
     DOMAIN="${PUBLIC_IP}.nip.io"
 fi
 
-echo "[4/6] Configured Domain: https://${DOMAIN}"
+echo "[4/7] Configured Domain: https://${DOMAIN}"
 
 # 5. Create / Update .env file
-echo "[5/6] Writing production environment configuration..."
+echo "[5/7] Writing production environment configuration..."
 cat <<EOF > .env
 APP_ENV=production
 APP_NAME=BeatWave
@@ -78,16 +78,22 @@ REQUEST_RATE_LIMIT_WINDOW_SECONDS=300
 EOF
 
 # 6. Build and launch services
-echo "[6/6] Launching BeatWave containers with Docker Compose..."
+echo "[6/7] Launching BeatWave containers with Docker Compose..."
 sudo docker compose down 2>/dev/null || true
 sudo docker compose up -d --build
+
+# 7. Setup 100% automated background updater (checks GitHub every 2 minutes)
+echo "[7/7] Setting up 100% automatic GitHub update watcher..."
+REPO_DIR=$(pwd)
+(crontab -l 2>/dev/null | grep -v "BeatWave"; echo "*/2 * * * * cd $REPO_DIR && git fetch origin main >/dev/null 2>&1 && [ \$(git rev-parse HEAD) != \$(git rev-parse @{u}) ] && ./update.sh >> /var/log/beatwave-autoupdate.log 2>&1") | crontab -
 
 echo ""
 echo "=========================================================="
 echo "🎉 BeatWave is LIVE on your Oracle Free Tier VPS!"
 echo "=========================================================="
 echo "🌐 Mini App HTTPS URL: https://${DOMAIN}"
-echo "🤖 Telegram Bot:       Active & Listening"
+echo "🤖 Telegram Bot:       Active & Listening 24/7"
+echo "⚡ Auto-Updater:       ACTIVE (auto-deploys on git push)"
 echo ""
 echo "📲 NEXT STEPS IN TELEGRAM (@BotFather):"
 echo "1. Open @BotFather in Telegram"
