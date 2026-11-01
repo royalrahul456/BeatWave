@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  body.theme-purple {
+    --theme-primary: #a855f7;
+    --theme-secondary: #c084fc;
+    --theme-glow: rgba(168, 85, 247, 0.45);
+    --theme-bg: #0d091a;
+    --theme-bg-elevated: #17102b;
+    --theme-accent-rgb: 168, 85, 247;
+    --theme-card-bg: rgba(23, 16, 43, 0.65);
+    --theme-border: rgba(168, 85, 247, 0.25);
+  }
+
+  body.theme-cyan {
+    --theme-primary: #00f2fe;
+    --theme-secondary: #38bdf8;
+    --theme-glow: rgba(0, 242, 254, 0.45);
+    --theme-bg: #050a14;
+    --theme-bg-elevated: #0b1626;
+    --theme-accent-rgb: 0, 242, 254;
+    --theme-card-bg: rgba(11, 22, 38, 0.65);
+    --theme-border: rgba(0, 242, 254, 0.25);
+  }
+
+  body.theme-emerald {
+    --theme-primary: #10b981;
+    --theme-secondary: #34d399;
+    --theme-glow: rgba(16, 185, 129, 0.45);
+    --theme-bg: #05120d;
+    --theme-bg-elevated: #0c2219;
+    --theme-accent-rgb: 16, 185, 129;
+    --theme-card-bg: rgba(12, 34, 25, 0.65);
+    --theme-border: rgba(16, 185, 129, 0.25);
+  }
+
+  body.theme-amber {
+    --theme-primary: #f59e0b;
+    --theme-secondary: #fbbf24;
+    --theme-glow: rgba(245, 158, 11, 0.45);
+    --theme-bg: #140c04;
+    --theme-bg-elevated: #241508;
+    --theme-accent-rgb: 245, 158, 11;
+    --theme-card-bg: rgba(36, 21, 8, 0.65);
+    --theme-border: rgba(245, 158, 11, 0.25);
+  }
+
+  body.theme-silver {
+    --theme-primary: #e2e8f0;
+    --theme-secondary: #94a3b8;
+    --theme-glow: rgba(226, 232, 240, 0.35);
+    --theme-bg: #0d1017;
+    --theme-bg-elevated: #181d28;
+    --theme-accent-rgb: 226, 232, 240;
+    --theme-card-bg: rgba(24, 29, 40, 0.65);
+    --theme-border: rgba(226, 232, 240, 0.25);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Plus Jakarta Sans", system-ui, sans-serif;
+    color-scheme: dark;
+    background-color: var(--theme-bg, #0d091a);
+    color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: hidden;
+    transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Apple Liquid Glass Optical Surfaces */
+.apple-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(35px) saturate(190%);
+  -webkit-backdrop-filter: blur(35px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 20px 45px -10px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.apple-glass-card {
+  background: var(--theme-card-bg, rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-glass-card:hover {
+  border-color: var(--theme-border, rgba(168, 85, 247, 0.35));
+  transform: translateY(-2px);
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.5), 0 0 20px var(--theme-glow, rgba(168, 85, 247, 0.3));
+}
+
+.apple-glass-pill {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-glass-pill.active {
+  background: var(--theme-primary, #a855f7);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 20px var(--theme-glow, rgba(168, 85, 247, 0.45));
+}
+
+/* Glowing Dynamic Play Button */
+.apple-play-button {
+  background: radial-gradient(circle at 30% 30%, var(--theme-secondary, #c084fc) 0%, var(--theme-primary, #a855f7) 100%);
+  box-shadow: 
+    0 0 30px var(--theme-glow, rgba(168, 85, 247, 0.45)),
+    0 8px 25px rgba(0, 0, 0, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-play-button:active {
+  transform: scale(0.92);
+  box-shadow: 0 0 18px var(--theme-glow, rgba(168, 85, 247, 0.3));
+}
+
+/* Circular Artwork Double Glass Ring Halo */
+.circular-halo-ring {
+  box-shadow: 
+    0 0 0 10px rgba(255, 255, 255, 0.04),
+    0 0 0 22px rgba(var(--theme-accent-rgb, 168, 85, 247), 0.1),
+    0 0 50px var(--theme-glow, rgba(168, 85, 247, 0.4));
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

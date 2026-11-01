@@ -1,0 +1,13 @@
+{$DOMAIN:localhost} {
+    # Automatic HTTPS is handled by Caddy for any valid domain or nip.io hostname
+
+    # Proxy API and WebSocket requests directly to FastAPI backend
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Proxy frontend UI
+    handle {
+        reverse_proxy frontend:80
+    }
+}
