@@ -64,7 +64,8 @@ class QueueService:
         room_id: uuid.UUID,
         user_id: uuid.UUID,
         provider: str,
-        provider_track_id: str
+        provider_track_id: str,
+        play_now: bool = True
     ) -> Tuple[bool, str, Optional[QueueItem]]:
         room = await db.get(MusicRoom, room_id)
         if not room or room.status == "ended":
@@ -136,12 +137,17 @@ class QueueService:
         db.add(queue_item)
         await db.flush()
 
-        # Check if playback state is idle; if so, promote to current!
+        # Check if playback state should promote this track to play immediately
         pb_res = await db.execute(
             select(PlaybackState).where(PlaybackState.room_id == room_id)
         )
         playback = pb_res.scalar_one_or_none()
-        if playback and (playback.status in ["idle", "stopped"] or not playback.current_queue_item_id):
+        should_play = play_now or (playback and (playback.status in ["idle", "stopped"] or not playback.current_queue_item_id))
+        if playback and should_play:
+            if playback.current_queue_item_id:
+                prev_item = await db.get(QueueItem, playback.current_queue_item_id)
+                if prev_item:
+                    prev_item.status = "played"
             queue_item.status = "current"
             queue_item.position = 0
             playback.current_queue_item_id = queue_item.id

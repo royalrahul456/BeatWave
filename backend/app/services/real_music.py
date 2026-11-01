@@ -117,12 +117,39 @@ class RealMusicService:
 
         return []
 
+    def lookup_itunes_sync(self, track_id: str) -> Optional[Dict[str, Any]]:
+        url = f"https://itunes.apple.com/lookup?id={track_id}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "BeatWave/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                results = data.get("results", [])
+                if results:
+                    item = results[0]
+                    artwork = item.get("artworkUrl100", "").replace("100x100bb", "600x600bb")
+                    preview_url = item.get("previewUrl") or self.get_fallback_audio_url(str(track_id))
+                    return {
+                        "provider": "itunes",
+                        "provider_track_id": str(track_id),
+                        "title": item.get("trackName", "Track"),
+                        "artist": item.get("artistName", "Artist"),
+                        "album": item.get("collectionName"),
+                        "duration_ms": item.get("trackTimeMillis", 180000),
+                        "artwork_url": artwork,
+                        "audio_url": preview_url,
+                        "source_attribution": f"Official ({item.get('artistName', 'Music')})",
+                        "availability_status": "available"
+                    }
+        except Exception as e:
+            print(f"[RealMusicService] iTunes lookup error: {e}")
+        return None
+
     def get_audio_url_sync(self, track_id: str) -> Optional[Dict[str, Any]]:
         # Check if this is an iTunes track ID (all digits)
-        if track_id.isdigit():
-            itunes_results = self.search_itunes_sync(track_id, limit=1)
-            if itunes_results:
-                return itunes_results[0]
+        if str(track_id).isdigit():
+            itunes_track = self.lookup_itunes_sync(str(track_id))
+            if itunes_track:
+                return itunes_track
 
         # Try extracting direct YouTube stream
         url = f"https://www.youtube.com/watch?v={track_id}"

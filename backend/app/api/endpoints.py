@@ -230,7 +230,8 @@ async def add_track_request(
         room_id=room_id,
         user_id=user.id,
         provider=body.provider,
-        provider_track_id=body.provider_track_id
+        provider_track_id=body.provider_track_id,
+        play_now=body.play_now if body.play_now is not None else True
     )
     if not success or not item:
         raise HTTPException(status_code=400, detail=message)

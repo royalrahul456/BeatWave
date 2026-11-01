@@ -107,6 +107,7 @@ class AddRequestSchema(BaseModel):
     provider: str
     provider_track_id: str
     idempotency_key: Optional[str] = None
+    play_now: Optional[bool] = True
 
 
 class SeekRequestSchema(BaseModel):

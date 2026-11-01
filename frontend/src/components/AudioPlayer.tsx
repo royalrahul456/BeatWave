@@ -13,6 +13,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
   const [isPlayingLocally, setIsPlayingLocally] = useState(false);
 
   const currentTrack = playbackState?.current_queue_item?.track;
+  const currentTrackId = currentTrack?.id;
   const audioSrc = currentTrack?.audio_url;
 
   // Synchronization calculation
@@ -33,10 +34,16 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
     const audio = audioRef.current;
     if (!audio || !audioSrc) return;
 
+    // Detect track change and load new audio file immediately
+    if (audio.src !== audioSrc) {
+      audio.src = audioSrc;
+      audio.load();
+      audio.currentTime = 0;
+    }
+
     if (playbackState?.status === 'playing') {
       const expectedSec = getExpectedPositionSeconds();
-      // Drift threshold: if drift > 1.5s, seek
-      if (Math.abs(audio.currentTime - expectedSec) > 1.5) {
+      if (Math.abs(audio.currentTime - expectedSec) > 1.5 || expectedSec === 0) {
         audio.currentTime = expectedSec;
       }
 
@@ -63,7 +70,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
         audio.currentTime = posSec;
       }
     }
-  }, [playbackState?.status, playbackState?.version, audioSrc]);
+  }, [playbackState?.status, playbackState?.version, currentTrackId, audioSrc]);
 
   const handleUserUnblock = () => {
     const audio = audioRef.current;
