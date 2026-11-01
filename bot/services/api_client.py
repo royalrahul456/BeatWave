@@ -4,8 +4,13 @@ from bot.config import bot_settings
 
 
 class BackendAPIClient:
-    def __init__(self, base_url: str = bot_settings.API_BASE_URL):
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: Optional[str] = None):
+        self._base_url = base_url
+
+    @property
+    def base_url(self) -> str:
+        url = self._base_url or bot_settings.API_BASE_URL
+        return url.rstrip("/")
 
     def _headers(self, telegram_user_id: int) -> Dict[str, str]:
         return {

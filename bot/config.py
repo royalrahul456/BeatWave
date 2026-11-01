@@ -1,4 +1,15 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_default_api_base_url() -> str:
+    port = os.getenv("PORT", "8000")
+    return os.getenv("API_BASE_URL", f"http://127.0.0.1:{port}/api/v1")
+
+
+def get_default_mini_app_url() -> str:
+    # Check explicitly defined MINI_APP_URL, then Render's automatic external URL, then localhost
+    return os.getenv("MINI_APP_URL", os.getenv("RENDER_EXTERNAL_URL", "http://localhost:3000"))
 
 
 class BotSettings(BaseSettings):
@@ -9,8 +20,8 @@ class BotSettings(BaseSettings):
     )
 
     TELEGRAM_BOT_TOKEN: str = "demo_bot_token"
-    API_BASE_URL: str = "http://localhost:8000/api/v1"
-    MINI_APP_URL: str = "https://mighty-cars-flash.loca.lt"
+    API_BASE_URL: str = get_default_api_base_url()
+    MINI_APP_URL: str = get_default_mini_app_url()
     LOG_LEVEL: str = "INFO"
 
 
