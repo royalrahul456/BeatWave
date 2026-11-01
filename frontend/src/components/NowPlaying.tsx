@@ -353,6 +353,49 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
         </button>
       </div>
 
+      {/* --- ACTIVE ROOM PARTICIPANTS --- */}
+      <div className="w-full mt-3 p-3.5 rounded-2xl apple-glass-card space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <h4 className="text-xs font-bold text-white tracking-wide uppercase">
+              Room Listeners ({room?.members_count || 1})
+            </h4>
+          </div>
+          <span className="text-[10px] text-cyan-300 font-mono font-semibold">Live in Sync</span>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          {room?.members && room.members.length > 0 ? (
+            room.members.map((m) => {
+              const name = m.display_name || m.username || `User ${m.telegram_user_id}`;
+              const isUserDJ = room.current_dj?.id === m.id;
+              return (
+                <div 
+                  key={m.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 flex-shrink-0 text-xs text-gray-200"
+                >
+                  <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] flex items-center justify-center font-bold">
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="font-medium text-xs truncate max-w-[100px]">{name}</span>
+                  {isUserDJ && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-400/30">
+                      DJ
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-gray-400 py-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>You and your group members are listening together</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* --- INTEGRATED QUEUE SECTION SHIFTED BELOW SONG CARD & CONTROLS --- */}
       <div className="w-full mt-2 pt-5 border-t border-white/10 space-y-3">
         <div className="flex items-center justify-between px-1">

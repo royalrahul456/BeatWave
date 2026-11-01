@@ -1,3 +1,4 @@
+import urllib.parse
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -144,24 +145,80 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
         await status_msg.edit_text(f"❌ No tracks found for *{query}*. Please try another search term.", parse_mode="Markdown")
         return
 
-    buttons = []
-    for track in results[:5]:
-        title_short = track['title'][:26]
-        dur = format_duration(track.get('duration_ms', 0))
-        btn_text = f"▶ {title_short} ({dur})"
-        cb_data = f"req:{track['provider']}:{track['provider_track_id']}"
-        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=cb_data)])
+    # Direct play: select the top matching track immediately
+    track = results[0]
+    await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"])
 
-    app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
-    buttons.append([InlineKeyboardButton(text="🌊 Open Mini App", web_app=WebAppInfo(url=app_url))])
+    # Duration formatting
+    duration_ms = track.get("duration_ms", 240000)
+    dur_str = format_duration(duration_ms)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await status_msg.edit_text(
-        f"🎵 *Search Results for* \"_{query}_\":\n\n"
-        f"Tap any track below to queue it in the room:",
-        reply_markup=kb,
-        parse_mode="Markdown"
+    # Track URL
+    provider = track.get("provider", "music")
+    pid = track.get("provider_track_id", "")
+    if provider == "youtube":
+        track_url = f"https://www.youtube.com/watch?v={pid}"
+    else:
+        track_url = f"https://www.google.com/search?q={urllib.parse.quote(track['title'] + ' song')}"
+
+    # User display name
+    user_name = user.full_name or user.username or "Listener"
+    track_title = track.get("title", query)
+
+    caption = (
+        "🎵 Started streaming\n"
+        f"🎶 Title: [{track_title}]({track_url})\n"
+        f"🕛 Duration: {dur_str} min\n"
+        f"🙍🏻 Requested by: {user_name}"
     )
+
+    members_count = room.get("members_count", 1)
+    app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🌊 Open Liquid Glass Player", web_app=WebAppInfo(url=app_url)),
+            ],
+            [
+                InlineKeyboardButton(text=f"👥 In Room: {members_count} Listeners", callback_data=f"room_members:{room_id}"),
+                InlineKeyboardButton(text="⏭ Skip", callback_data="ctrl:skip"),
+            ]
+        ]
+    )
+
+    artwork_url = track.get("artwork_url") or "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
+
+    try:
+        await status_msg.delete()
+    except Exception:
+        pass
+
+    try:
+        await message.answer_photo(
+            photo=artwork_url,
+            caption=caption,
+            reply_markup=kb,
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await message.reply(caption, reply_markup=kb, parse_mode="Markdown", disable_web_page_preview=False)
+
+
+@router.callback_query(F.data.startswith("room_members:"))
+async def cb_room_members_info(query: types.CallbackQuery):
+    room_id = query.data.split(":")[1]
+    room = await api_client.get_room(room_id, query.from_user.id)
+    if room:
+        members = room.get("members", [])
+        if members:
+            names = [f"• {m.get('display_name') or m.get('username') or 'Member'}" for m in members]
+            text = f"👥 *Active Room Listeners ({len(members)}):*\n\n" + "\n".join(names)
+        else:
+            text = f"👥 *Listeners in Room:* {room.get('members_count', 1)}"
+    else:
+        text = "👥 *Listeners:* Active"
+    await query.answer(text, show_alert=True)
 
 
 # --- Callback query: Add track to queue ---

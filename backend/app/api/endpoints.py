@@ -130,11 +130,20 @@ async def get_room(
     current_dj = await room_service.get_dj(db, room.id)
     is_dj = await room_service.is_dj_or_admin(db, room.id, user.id)
 
-    # Count active members
+    # Count active members and load user details
     mem_res = await db.execute(
         select(func.count(RoomMember.id)).where(RoomMember.room_id == room.id)
     )
     members_count = mem_res.scalar() or 1
+
+    mem_users_res = await db.execute(
+        select(User)
+        .join(RoomMember, RoomMember.user_id == User.id)
+        .where(RoomMember.room_id == room.id)
+        .limit(15)
+    )
+    room_members = list(mem_users_res.scalars().all())
+    members_dto = [UserResponse.model_validate(m) for m in room_members]
 
     # Playback state
     playback = await playback_service.get_state(db, room.id)
@@ -166,6 +175,7 @@ async def get_room(
         is_admin=is_dj,
         current_dj=UserResponse.model_validate(current_dj) if current_dj else None,
         members_count=members_count,
+        members=members_dto,
         playback_state=playback_dto
     )
 

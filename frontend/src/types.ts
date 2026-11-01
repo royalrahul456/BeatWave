@@ -55,5 +55,6 @@ export interface Room {
   is_admin: boolean;
   current_dj?: User;
   members_count: number;
+  members?: User[];
   playback_state?: PlaybackState;
 }

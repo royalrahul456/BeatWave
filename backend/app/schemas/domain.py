@@ -89,6 +89,7 @@ class RoomResponse(BaseModel):
     is_admin: bool = False
     current_dj: Optional[UserResponse] = None
     members_count: int = 0
+    members: List[UserResponse] = []
     playback_state: Optional[PlaybackStateResponse] = None
 
     class Config:
