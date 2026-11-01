@@ -17,26 +17,29 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState, onTrack
   const currentTrackId = currentTrack?.id;
   const audioSrc = currentTrack?.audio_url;
 
-  // Synchronization calculation with timezone-safe UTC parsing
-  const parseUtcDate = (dateStr?: string | null): number => {
-    if (!dateStr) return 0;
-    const isoStr = dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
-    const parsed = new Date(isoStr).getTime();
-    return isNaN(parsed) ? 0 : parsed;
-  };
+  const lastSyncRef = useRef<{ baseMs: number; receivedAt: number }>({
+    baseMs: 0,
+    receivedAt: performance.now()
+  });
+
+  useEffect(() => {
+    if (!playbackState) return;
+    lastSyncRef.current = {
+      baseMs: playbackState.position_ms || 0,
+      receivedAt: performance.now()
+    };
+  }, [playbackState?.position_ms, playbackState?.version]);
 
   const getExpectedPositionSeconds = (): number => {
     if (!playbackState) return 0;
-    if (playbackState.status !== 'playing' || !playbackState.started_at) {
+    if (playbackState.status !== 'playing') {
       return (playbackState.position_ms || 0) / 1000;
     }
-    const startedAtMs = parseUtcDate(playbackState.started_at);
-    const nowMs = Date.now();
-    const rawElapsedSec = (nowMs - startedAtMs) / 1000;
+    const { baseMs, receivedAt } = lastSyncRef.current;
+    const elapsedSec = ((performance.now() - receivedAt) / 1000) * (playbackState.playback_rate || 1.0);
     const durationSec = (currentTrack?.duration_ms || 0) / 1000;
-    const elapsedSec = (rawElapsedSec > 0 && (durationSec === 0 || rawElapsedSec < durationSec + 10)) ? rawElapsedSec : 0;
-    const currentSec = (playbackState.position_ms / 1000) + (elapsedSec * (playbackState.playback_rate || 1.0));
-    return durationSec > 0 ? Math.min(currentSec, durationSec) : currentSec;
+    const currentSec = (baseMs / 1000) + elapsedSec;
+    return durationSec > 0 ? Math.min(currentSec, durationSec) : Math.max(0, currentSec);
   };
 
   useEffect(() => {
@@ -52,7 +55,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState, onTrack
 
     if (playbackState?.status === 'playing') {
       const expectedSec = getExpectedPositionSeconds();
-      if (Math.abs(audio.currentTime - expectedSec) > 1.5 || expectedSec === 0) {
+      // Seek only when drift exceeds 3 seconds to avoid micro-stutters or jumps
+      if (Math.abs(audio.currentTime - expectedSec) > 3.0) {
         audio.currentTime = expectedSec;
       }
 
@@ -75,7 +79,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState, onTrack
       audio.pause();
       setIsPlayingLocally(false);
       const posSec = (playbackState?.position_ms || 0) / 1000;
-      if (Math.abs(audio.currentTime - posSec) > 0.5) {
+      if (Math.abs(audio.currentTime - posSec) > 1.0) {
         audio.currentTime = posSec;
       }
     }

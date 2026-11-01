@@ -81,9 +81,9 @@ class QueueService:
 
         # Check rate limits (e.g. max requests per window)
         window_seconds = 300
-        max_requests = 5
+        max_requests = 30
         if group_settings:
-            max_requests = group_settings.max_requests_per_user_window
+            max_requests = max(group_settings.max_requests_per_user_window, 30)
 
         window_start = utc_now() - timedelta(seconds=window_seconds)
         count_res = await db.execute(
@@ -104,9 +104,9 @@ class QueueService:
         if not track:
             return False, "Track not found in authorized provider", None
 
-        # Duplicate check in upcoming queue
-        duplicate_policy = group_settings.duplicate_policy if group_settings else "reject"
-        if duplicate_policy == "reject":
+        # Duplicate check in upcoming queue (skip if user wants to play now)
+        duplicate_policy = group_settings.duplicate_policy if group_settings else "allow"
+        if duplicate_policy == "reject" and not play_now:
             dup_res = await db.execute(
                 select(QueueItem).where(
                     and_(

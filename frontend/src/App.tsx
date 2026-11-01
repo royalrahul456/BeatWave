@@ -165,6 +165,30 @@ export const App: React.FC = () => {
     };
   }, [room?.id]);
 
+  // Periodic poll to keep room state, queue, and participants continuously updated
+  useEffect(() => {
+    if (!room?.id || !token) return;
+    const interval = setInterval(async () => {
+      try {
+        const [roomRes, qRes] = await Promise.all([
+          fetch(`/api/v1/rooms/${room.id}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`/api/v1/rooms/${room.id}/queue`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if (roomRes.ok) {
+          const rData = await roomRes.json();
+          setRoom(rData);
+        }
+        if (qRes.ok) {
+          const qData = await qRes.json();
+          setQueue(qData);
+        }
+      } catch (e) {
+        // Silently ignore background poll errors
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [room?.id, token]);
+
   // Playback Control Handlers
   const handleControlAction = useCallback(async (action: string, payload?: any) => {
     if (!room?.id || !token) return;

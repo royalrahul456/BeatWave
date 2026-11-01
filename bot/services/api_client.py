@@ -39,11 +39,13 @@ class BackendAPIClient:
 
     async def _request(self, method: str, path: str, **kwargs) -> Optional[httpx.Response]:
         last_error = None
-        for base in self.candidate_base_urls:
+        # Try active cached base URL first to avoid candidate latency
+        candidates = [self._base_url] + [u for u in self.candidate_base_urls if u != self._base_url] if self._base_url else self.candidate_base_urls
+        for base in candidates:
             url = f"{base}/{path.lstrip('/')}"
             try:
                 async with httpx.AsyncClient() as client:
-                    res = await client.request(method, url, timeout=10.0, **kwargs)
+                    res = await client.request(method, url, timeout=25.0, **kwargs)
                     if res.status_code in (200, 201):
                         self._base_url = base  # Cache successful endpoint
                         return res

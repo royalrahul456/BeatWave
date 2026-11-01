@@ -36,31 +36,23 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
   const [volume, setVolume] = useState(85);
   const [showVolume, setShowVolume] = useState(false);
 
-  // Smooth local scrubber ticker with safe UTC parsing
+  // Smooth local scrubber ticker without clock skew
   const [displayPositionMs, setDisplayPositionMs] = useState(0);
-
-  const parseUtcDate = (dateStr?: string | null): number => {
-    if (!dateStr) return 0;
-    const isoStr = dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
-    const parsed = new Date(isoStr).getTime();
-    return isNaN(parsed) ? 0 : parsed;
-  };
 
   useEffect(() => {
     if (!playback) return;
 
     const basePositionMs = playback.position_ms || 0;
-    const startedAt = parseUtcDate(playback.started_at);
     const rate = playback.playback_rate || 1.0;
     const duration = track?.duration_ms || 240000;
+    const receivedAt = performance.now();
 
-    if (playback.status === 'playing' && startedAt > 0) {
+    setDisplayPositionMs(Math.max(0, Math.min(basePositionMs, duration)));
+
+    if (playback.status === 'playing') {
       const updatePosition = () => {
-        const now = Date.now();
-        const rawElapsed = (now - startedAt) * rate;
-        // Guard against timezone clock skew jumps (> 1 hour or negative)
-        const elapsed = (rawElapsed > 0 && rawElapsed < duration + 10000) ? rawElapsed : 0;
-        const current = basePositionMs + elapsed;
+        const elapsedSinceSnapshot = (performance.now() - receivedAt) * rate;
+        const current = basePositionMs + elapsedSinceSnapshot;
         setDisplayPositionMs(Math.max(0, Math.min(current, duration)));
         if (current >= duration && duration > 0 && isDJ) {
           onControlAction('skip');
@@ -70,10 +62,8 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
       updatePosition();
       const interval = setInterval(updatePosition, 200);
       return () => clearInterval(interval);
-    } else {
-      setDisplayPositionMs(basePositionMs);
     }
-  }, [playback?.status, playback?.position_ms, playback?.started_at, track?.duration_ms]);
+  }, [playback?.status, playback?.position_ms, playback?.version, track?.duration_ms]);
 
   const durationMs = track?.duration_ms || 222000;
   const progressRatio = Math.max(0, Math.min(1, displayPositionMs / durationMs));
@@ -210,6 +200,15 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
           <p className="text-sm text-gray-400 font-medium line-clamp-1 mt-0.5">
             {track.artist || 'Unknown Artist'}
           </p>
+
+          {/* Glowing Listener Name / Requester Badge */}
+          <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-gray-300">Requested by:</span>
+            <span className="text-cyan-300 font-bold tracking-wide">
+              {currentItem?.requested_by?.display_name || currentItem?.requested_by?.username || room?.current_dj?.display_name || "Rahul"}
+            </span>
+          </div>
         </div>
 
         {/* Heart Like in Frosted Circle Button */}
