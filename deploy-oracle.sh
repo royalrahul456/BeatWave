@@ -5,13 +5,26 @@ echo "=========================================================="
 echo "      🌊 BeatWave — Oracle Cloud Free Tier Auto Deploy     "
 echo "=========================================================="
 
-# 1. Update OS and install basic packages
-echo "[1/7] Updating system and installing dependencies..."
-sudo apt-get update -y
-sudo apt-get install -y curl git ufw iptables-persistent
+# 1. Detect OS and install basic packages
+echo "[1/7] Detecting OS and installing dependencies..."
+if command -v dnf &> /dev/null; then
+    sudo dnf install -y git curl tar cronie
+    sudo systemctl enable --now crond 2>/dev/null || true
+elif command -v yum &> /dev/null; then
+    sudo yum install -y git curl tar crontabs
+    sudo systemctl enable --now crond 2>/dev/null || true
+elif command -v apt-get &> /dev/null; then
+    sudo apt-get update -y
+    sudo apt-get install -y git curl cron iptables-persistent
+fi
 
-# 2. Open Oracle Linux firewall for Ports 80 and 443
-echo "[2/7] Configuring Oracle Linux firewall (Ports 80 & 443)..."
+# 2. Configure firewall for Ports 80 and 443
+echo "[2/7] Configuring firewall (Ports 80 & 443)..."
+if command -v firewall-cmd &> /dev/null; then
+    sudo firewall-cmd --permanent --add-port=80/tcp 2>/dev/null || true
+    sudo firewall-cmd --permanent --add-port=443/tcp 2>/dev/null || true
+    sudo firewall-cmd --reload 2>/dev/null || true
+fi
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT 2>/dev/null || true
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
 sudo netfilter-persistent save 2>/dev/null || true
@@ -21,14 +34,16 @@ if ! command -v docker &> /dev/null; then
     echo "[3/7] Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
     sudo sh get-docker.sh
-    sudo usermod -aG docker "$USER"
-    rm get-docker.sh
+    sudo systemctl enable --now docker
+    sudo usermod -aG docker "$USER" 2>/dev/null || true
+    rm -f get-docker.sh
 else
     echo "[3/7] Docker is already installed."
+    sudo systemctl enable --now docker 2>/dev/null || true
 fi
 
 # 4. Detect public IP if domain is not provided
-PUBLIC_IP=$(curl -s https://ifconfig.me || curl -s https://api.ipify.org || echo "127.0.0.1")
+PUBLIC_IP=$(curl -s https://ifconfig.me || curl -s https://api.ipify.org || echo "152.67.3.98")
 
 if [ -z "$DOMAIN" ]; then
     # Use nip.io as a zero-config wildcard domain with valid HTTPS
