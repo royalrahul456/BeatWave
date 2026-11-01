@@ -187,23 +187,34 @@ export const SearchView: React.FC<SearchViewProps> = ({ onSearch, onRequestTrack
                 </div>
               </div>
 
-              {/* Action Button */}
+              {/* Action Button - High Visibility Cyan Glass */}
               <button
                 onClick={() => handleAdd(track)}
                 disabled={isCurrentlyAdding || isAdded}
-                className={`p-3 rounded-2xl transition-all active:scale-90 flex-shrink-0 ${
+                className={`px-3.5 py-2.5 rounded-2xl transition-all active:scale-95 flex items-center gap-1.5 flex-shrink-0 text-xs font-bold shadow-lg ${
                   isAdded
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-400/40'
-                    : 'vision-button-play text-black hover:opacity-95'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                    : isCurrentlyAdding
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                    : 'bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-black border border-cyan-300/60 shadow-[0_0_20px_rgba(0,242,254,0.45)]'
                 }`}
                 title="Add to queue"
               >
                 {isCurrentlyAdding ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-cyan-300" />
+                    <span>Adding...</span>
+                  </>
                 ) : isAdded ? (
-                  <Check className="w-5 h-5" />
+                  <>
+                    <Check className="w-4 h-4 text-emerald-300 stroke-[3]" />
+                    <span>Added</span>
+                  </>
                 ) : (
-                  <Plus className="w-5 h-5 stroke-[2.5]" />
+                  <>
+                    <Plus className="w-4 h-4 text-black stroke-[3]" />
+                    <span>Add</span>
+                  </>
                 )}
               </button>
             </div>
