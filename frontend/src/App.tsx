@@ -361,7 +361,10 @@ export const App: React.FC = () => {
 
       {/* Bottom Synchronized Audio Streaming Engine */}
       <div className="fixed bottom-24 left-0 right-0 z-30 px-4 pointer-events-auto">
-        <AudioPlayer playbackState={room?.playback_state} />
+        <AudioPlayer 
+          playbackState={room?.playback_state} 
+          onTrackEnded={() => handleControlAction('skip')}
+        />
       </div>
 
       {/* Floating 4-Button Glass Pill Navigation Bar (Queue removed & shifted to Play tab) */}

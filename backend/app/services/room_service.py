@@ -178,12 +178,9 @@ class RoomService:
         if dj and dj.id == user_id:
             return True
 
-        # If no DJ is assigned, check if room has temporary_dj policy or allows creator
+        # If no DJ is assigned, any member in the room can control playback until a DJ is appointed
         if not dj:
-            # When no DJ is explicitly set, creator or first user has permissions until appointed
-            room = await db.get(MusicRoom, room_id)
-            if room and (room.created_by_user_id == user_id or room.created_by_user_id is None):
-                return True
+            return True
 
         return False
 

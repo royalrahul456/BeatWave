@@ -184,6 +184,18 @@ async def get_room_state(
     duration_ms = track.duration_ms if track else 0
     current_pos = playback_service.calculate_current_position(playback, duration_ms)
 
+    # Server-side authoritative auto-advance:
+    # If the track has naturally reached its duration, automatically advance to next song!
+    if playback.status == "playing" and track and duration_ms > 0 and current_pos >= duration_ms:
+        success, msg, new_pb = await playback_service.skip(db, room_id)
+        if success and new_pb:
+            playback = new_pb
+            track = playback.current_queue_item.track if playback.current_queue_item else None
+            duration_ms = track.duration_ms if track else 0
+            current_pos = playback_service.calculate_current_position(playback, duration_ms)
+        else:
+            current_pos = 0
+
     return PlaybackStateResponse(
         room_id=playback.room_id,
         status=playback.status,

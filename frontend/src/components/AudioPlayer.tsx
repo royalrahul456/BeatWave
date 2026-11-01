@@ -4,9 +4,10 @@ import { PlaybackState } from '../types';
 
 interface AudioPlayerProps {
   playbackState?: PlaybackState;
+  onTrackEnded?: () => void;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState, onTrackEnded }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -105,7 +106,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ playbackState }) => {
         ref={audioRef}
         src={audioSrc}
         preload="auto"
-        onEnded={() => setIsPlayingLocally(false)}
+        onEnded={() => {
+          setIsPlayingLocally(false);
+          if (onTrackEnded) {
+            onTrackEnded();
+          }
+        }}
       />
 
       {isAutoplayBlocked && (

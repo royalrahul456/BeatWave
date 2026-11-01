@@ -62,6 +62,9 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
         const elapsed = (rawElapsed > 0 && rawElapsed < duration + 10000) ? rawElapsed : 0;
         const current = basePositionMs + elapsed;
         setDisplayPositionMs(Math.max(0, Math.min(current, duration)));
+        if (current >= duration && duration > 0 && isDJ) {
+          onControlAction('skip');
+        }
       };
 
       updatePosition();
