@@ -1,5 +1,15 @@
+import os
 import sys
 import asyncio
+import logging
+
+# Ensure both backend and project root are in sys.path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+repo_root = os.path.dirname(backend_dir)
+for p in (backend_dir, repo_root):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -7,6 +17,8 @@ import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.db.session import engine, Base, async_session_maker
@@ -16,13 +28,33 @@ from app.services.playback_service import playback_service
 from app.schemas.domain import PlaybackStateResponse, QueueItemResponse
 from app.models.entities import utc_now
 
+logger = logging.getLogger("BeatWave")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize database tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Launch Telegram bot background task if token is set
+    bot_task = None
+    if settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_BOT_TOKEN != "demo_bot_token":
+        try:
+            # Add project root to sys.path so bot can be imported
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            if project_root not in sys.path:
+                sys.path.insert(0, project_root)
+            from bot.main import main as run_bot
+            bot_task = asyncio.create_task(run_bot())
+            logger.info("🌊 Telegram Bot background task launched successfully.")
+        except Exception as e:
+            logger.error(f"Could not launch Telegram bot in background: {e}")
+
     yield
+
+    if bot_task:
+        bot_task.cancel()
     await engine.dispose()
 
 
@@ -86,11 +118,28 @@ async def websocket_room_endpoint(websocket: WebSocket, room_id: uuid.UUID):
         ws_manager.disconnect(room_id, websocket)
 
 
-@app.get("/")
-async def root():
-    return {
-        "app": settings.APP_NAME,
-        "status": "online",
-        "docs": "/docs",
-        "health": "/api/v1/health"
-    }
+# Serve pre-built Telegram Mini App frontend if available
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+if os.path.exists(frontend_dir):
+    assets_dir = os.path.join(frontend_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Don't intercept API or docs routes
+        if full_path.startswith("api/") or full_path in ("docs", "redoc", "openapi.json"):
+            return None
+        candidate = os.path.join(frontend_dir, full_path)
+        if full_path and os.path.exists(candidate) and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(frontend_dir, "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "app": settings.APP_NAME,
+            "status": "online",
+            "docs": "/docs",
+            "health": "/api/v1/health"
+        }

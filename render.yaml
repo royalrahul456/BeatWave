@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: beatwave
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: BeatWave
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./beatwave.db
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: MINI_APP_URL
+        fromService:
+          type: web
+          name: beatwave
+          property: host
