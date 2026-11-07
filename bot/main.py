@@ -51,6 +51,7 @@ async def main():
             types.BotCommand(command="loop", description="🔁 Toggle repeat mode (DJ)"),
             types.BotCommand(command="stop", description="⏹ Stop playback (DJ)"),
             types.BotCommand(command="help", description="ℹ️ Command guide & features"),
+            types.BotCommand(command="owner", description="👑 View bot owner & developer info"),
         ])
         logger.info("Native Telegram bot command menu registered successfully.")
     except Exception as e:

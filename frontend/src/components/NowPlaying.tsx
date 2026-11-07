@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, Heart, Play, Pause, SkipForward, SkipBack, 
   Shuffle, Repeat, RotateCcw, RotateCw, Volume2, VolumeX, ShieldCheck,
-  ListMusic, Trash2, Plus, Disc3, Mic2, Sparkles
+  ListMusic, Trash2, Plus, Disc3, Mic2, Sparkles, ListPlus
 } from 'lucide-react';
-import { Room, QueueItem, ThemeConfig, LyricsData } from '../types';
+import { Room, QueueItem, ThemeConfig, LyricsData, Track } from '../types';
 
 interface NowPlayingProps {
   room?: Room;
@@ -14,6 +14,7 @@ interface NowPlayingProps {
   onRemoveQueueItem: (itemId: string) => Promise<void>;
   onOpenSearch: () => void;
   onBack: () => void;
+  onOpenPlaylist?: (track: Track) => void;
 }
 
 export const NowPlaying: React.FC<NowPlayingProps> = ({ 
@@ -23,7 +24,8 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
   onControlAction,
   onRemoveQueueItem,
   onOpenSearch,
-  onBack 
+  onBack,
+  onOpenPlaylist
 }) => {
   const playback = room?.playback_state;
   const currentItem = playback?.current_queue_item;
@@ -370,13 +372,26 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
           </div>
         </div>
 
-        {/* Heart Like in Frosted Circle Button */}
-        <button
-          onClick={() => setIsLiked(!isLiked)}
-          className="w-11 h-11 rounded-full apple-glass-card flex items-center justify-center transition-all active:scale-125 flex-shrink-0"
-        >
-          <Heart className={`w-5 h-5 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-gray-300'}`} />
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Add to Playlist button */}
+          {onOpenPlaylist && track && (
+            <button
+              onClick={() => onOpenPlaylist(track)}
+              className="w-11 h-11 rounded-full apple-glass-card flex items-center justify-center transition-all active:scale-125 text-gray-300 hover:text-cyan-400"
+              title="Add to Custom Playlist"
+            >
+              <ListPlus className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* Heart Like in Frosted Circle Button */}
+          <button
+            onClick={() => setIsLiked(!isLiked)}
+            className="w-11 h-11 rounded-full apple-glass-card flex items-center justify-center transition-all active:scale-125 flex-shrink-0"
+          >
+            <Heart className={`w-5 h-5 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-gray-300'}`} />
+          </button>
+        </div>
       </div>
 
       {/* Wavy Fluid Audio Scrubber & Controls (Exact layout from uploaded picture) */}

@@ -83,6 +83,7 @@ async def cmd_start(message: types.Message):
         "├── 📎 ⇛ 24x7 ꜱᴇʀᴠᴇʀ ᴜᴘᴛɪᴍᴇ & ᴢᴇʀᴏ-ʟᴀɢ\n"
         "├── 🎁 ⇛ ꜱʏɴᴄʜʀᴏɴɪᴢᴇᴅ ʟɪQᴜɪᴅ ɢʟᴀꜱꜱ ᴘʟᴀʏᴇʀ\n"
         "├── 🎩 ⇛ ᴅᴊ ʀᴏᴏᴍ ᴄᴏɴᴛʀᴏʟꜱ & ᴀᴜᴛᴏ-Qᴜᴇᴜᴇ\n"
+        "├── 👑 ⇛ ᴏᴡɴᴇʀ : @royalrahul456 (Rahul)\n"
         "│\n"
         "🌸 ╰── ᴛᴀᴘ ʙᴇʟᴏᴡ ᴛᴏ ʟᴀᴜɴᴄʜ ᴏʀ ᴀᴅᴅ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ !"
     )
@@ -102,6 +103,9 @@ async def cmd_start(message: types.Message):
             [
                 InlineKeyboardButton(text="➕ Add BeatWave to Group", url=add_group_url),
                 InlineKeyboardButton(text="ℹ️ Help Guide", callback_data="help_menu"),
+            ],
+            [
+                InlineKeyboardButton(text="👑 Bot Owner: Rahul (@royalrahul456)", url="https://t.me/royalrahul456"),
             ]
         ]
     )
@@ -262,3 +266,31 @@ async def cmd_dj(message: types.Message):
 
     kb = get_mini_app_keyboard(room["id"])
     await message.reply(text, reply_markup=kb, parse_mode="Markdown")
+
+
+@router.message(Command("owner"))
+@router.message(Command("developer"))
+async def cmd_owner(message: types.Message):
+    caption = (
+        "👑 ╭── [ ʙ ᴇ ᴀ ᴛ ᴡ ᴀ ᴠ ᴇ  ᴏ ᴡ ɴ ᴇ ʀ ]\n"
+        "│\n"
+        "├── 👤 ⇛ ᴏᴡɴᴇʀ : Rahul\n"
+        "├── 💬 ⇛ ᴜꜱᴇʀɴᴀᴍᴇ : @royalrahul456\n"
+        "├── ⚡ ⇛ ᴘʟᴀᴛꜰᴏʀᴍ : BeatWave Mini App v2.4\n"
+        "├── 🎧 ⇛ ᴇɴɢɪɴᴇ : 320kbps Lossless Synced Streaming\n"
+        "│\n"
+        "🌸 ╰── Contact the owner for bot integrations or support!"
+    )
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="👑 Message Rahul (@royalrahul456)", url="https://t.me/royalrahul456")
+            ]
+        ]
+    )
+    cover_photo = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&q=80"
+    try:
+        await message.answer_photo(photo=cover_photo, caption=caption, reply_markup=kb, parse_mode="Markdown")
+    except Exception:
+        await message.reply(caption, reply_markup=kb, parse_mode="Markdown")
+

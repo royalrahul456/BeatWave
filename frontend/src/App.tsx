@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Disc3, Search, User as UserIcon, AlertCircle } from 'lucide-react';
-import { Room, QueueItem, Track, User, ThemeId } from './types';
+import { Home, Disc3, Search, User as UserIcon, AlertCircle, ListPlus } from 'lucide-react';
+import { Room, QueueItem, Track, User, ThemeId, Playlist } from './types';
 import { THEMES } from './theme';
 import { HomeView } from './components/HomeView';
 import { NowPlaying } from './components/NowPlaying';
 import { SearchView } from './components/SearchView';
 import { ProfileView } from './components/ProfileView';
 import { AudioPlayer } from './components/AudioPlayer';
+import { PlaylistModal } from './components/PlaylistModal';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'now_playing' | 'search' | 'profile'>('home');
@@ -19,6 +20,38 @@ export const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Custom User Playlists
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    const saved = localStorage.getItem('beatwave_user_playlists');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      {
+        id: 'pl-party',
+        title: '🔥 Group Party Hits',
+        description: 'High-energy tracks for group listening',
+        tracks: [],
+        gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'pl-chill',
+        title: '🌙 Midnight Glass Chill',
+        description: 'Lo-fi & smooth synths',
+        tracks: [],
+        gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+        created_at: new Date().toISOString()
+      }
+    ];
+  });
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [trackToAddToPlaylist, setTrackToAddToPlaylist] = useState<Track | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('beatwave_user_playlists', JSON.stringify(playlists));
+  }, [playlists]);
 
   const activeThemeConfig = THEMES[currentTheme] || THEMES.purple;
 
@@ -318,6 +351,53 @@ export const App: React.FC = () => {
     }
   }, [room?.id, token]);
 
+  // Playlist Handlers
+  const handleCreatePlaylist = useCallback((title: string, description?: string) => {
+    const newPl: Playlist = {
+      id: `pl-${Date.now()}`,
+      title,
+      description,
+      tracks: [],
+      gradient: `linear-gradient(135deg, ${activeThemeConfig.secondary}, ${activeThemeConfig.primary})`,
+      created_at: new Date().toISOString()
+    };
+    setPlaylists(prev => [newPl, ...prev]);
+  }, [activeThemeConfig]);
+
+  const handleDeletePlaylist = useCallback((playlistId: string) => {
+    setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+  }, []);
+
+  const handleAddTrackToPlaylist = useCallback((playlistId: string, track: Track) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        if (p.tracks.some(t => t.id === track.id)) return p;
+        return { ...p, tracks: [...p.tracks, track] };
+      }
+      return p;
+    }));
+  }, []);
+
+  const handleRemoveTrackFromPlaylist = useCallback((playlistId: string, trackId: string) => {
+    setPlaylists(prev => prev.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, tracks: p.tracks.filter(t => t.id !== trackId) };
+      }
+      return p;
+    }));
+  }, []);
+
+  const handlePlayPlaylist = useCallback(async (playlist: Playlist) => {
+    if (playlist.tracks.length === 0) return;
+    const first = playlist.tracks[0];
+    await handleRequestTrack(first.provider, first.provider_track_id, true);
+    for (let i = 1; i < playlist.tracks.length; i++) {
+      const tr = playlist.tracks[i];
+      await handleRequestTrack(tr.provider, tr.provider_track_id, false);
+    }
+    setActiveTab('now_playing');
+  }, [handleRequestTrack]);
+
   if (loading) {
     return (
       <div 
@@ -394,6 +474,10 @@ export const App: React.FC = () => {
             onRemoveQueueItem={handleRemoveQueueItem}
             onOpenSearch={() => setActiveTab('search')}
             onBack={() => setActiveTab('home')}
+            onOpenPlaylist={(track) => {
+              setTrackToAddToPlaylist(track);
+              setIsPlaylistModalOpen(true);
+            }}
           />
         )}
         {activeTab === 'search' && (
@@ -407,6 +491,11 @@ export const App: React.FC = () => {
             currentTheme={currentTheme}
             theme={activeThemeConfig}
             onSelectTheme={setCurrentTheme}
+            playlists={playlists}
+            onOpenPlaylistModal={() => {
+              setTrackToAddToPlaylist(null);
+              setIsPlaylistModalOpen(true);
+            }}
           />
         )}
       </main>
@@ -419,64 +508,131 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Floating 4-Button Glass Pill Navigation Bar (Queue removed & shifted to Play tab) */}
-      <nav className="fixed bottom-4 left-6 right-6 z-40 h-16 rounded-full apple-glass flex items-center justify-around px-4 shadow-[0_20px_45px_rgba(0,0,0,0.85)]">
-        {/* 1. Home Tab */}
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-            activeTab === 'home'
-              ? 'apple-play-button text-white shadow-lg'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          style={activeTab === 'home' ? { boxShadow: `0 0 20px ${activeThemeConfig.glow}` } : {}}
-          title="Home"
-        >
-          <Home className="w-5 h-5" />
-        </button>
+      {/* Floating Liquid Glass Navigation Bar (Matching exact uploaded reference picture) */}
+      <div className="fixed bottom-4 left-4 right-4 z-40 flex items-center gap-2.5 max-w-md mx-auto pointer-events-auto">
+        {/* Main Frosted Glass Pill Dock */}
+        <nav className="flex-1 h-[68px] rounded-[34px] apple-glass-dock flex items-center justify-between px-2 py-1 shadow-[0_24px_50px_-8px_rgba(0,0,0,0.85)]">
+          {/* 1. Home Tab */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
+              activeTab === 'home'
+                ? 'apple-glass-lens rounded-full'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Home 
+              className={`w-5 h-5 ${activeTab === 'home' ? 'fill-current' : 'text-gray-400'}`} 
+              style={activeTab === 'home' ? { color: activeThemeConfig.primary } : {}}
+            />
+            <span 
+              className={`text-[10px] mt-0.5 ${activeTab === 'home' ? 'font-bold' : 'text-gray-400'}`}
+              style={activeTab === 'home' ? { color: activeThemeConfig.primary } : {}}
+            >
+              Home
+            </span>
+          </button>
 
-        {/* 2. Play / Now Playing Tab */}
-        <button
-          onClick={() => setActiveTab('now_playing')}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-            activeTab === 'now_playing'
-              ? 'apple-play-button text-white shadow-lg'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          style={activeTab === 'now_playing' ? { boxShadow: `0 0 20px ${activeThemeConfig.glow}` } : {}}
-          title="Play & Queue"
-        >
-          <Disc3 className={`w-5 h-5 ${activeTab === 'now_playing' ? 'animate-spin' : ''}`} style={{ animationDuration: '4s' }} />
-        </button>
+          {/* 2. Play / Music Tab */}
+          <button
+            onClick={() => setActiveTab('now_playing')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
+              activeTab === 'now_playing'
+                ? 'apple-glass-lens rounded-full'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Disc3 
+              className={`w-5 h-5 ${activeTab === 'now_playing' ? 'animate-spin' : ''}`}
+              style={{ 
+                animationDuration: '4s',
+                color: activeTab === 'now_playing' ? activeThemeConfig.primary : undefined 
+              }}
+            />
+            <span 
+              className={`text-[10px] mt-0.5 ${activeTab === 'now_playing' ? 'font-bold' : 'text-gray-400'}`}
+              style={activeTab === 'now_playing' ? { color: activeThemeConfig.primary } : {}}
+            >
+              Music
+            </span>
+          </button>
 
-        {/* 3. Search Tab */}
-        <button
-          onClick={() => setActiveTab('search')}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-            activeTab === 'search'
-              ? 'apple-play-button text-white shadow-lg'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          style={activeTab === 'search' ? { boxShadow: `0 0 20px ${activeThemeConfig.glow}` } : {}}
-          title="Search"
-        >
-          <Search className="w-5 h-5" />
-        </button>
+          {/* 3. Search Tab */}
+          <button
+            onClick={() => setActiveTab('search')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
+              activeTab === 'search'
+                ? 'apple-glass-lens rounded-full'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Search 
+              className="w-5 h-5"
+              style={activeTab === 'search' ? { color: activeThemeConfig.primary } : {}}
+            />
+            <span 
+              className={`text-[10px] mt-0.5 ${activeTab === 'search' ? 'font-bold' : 'text-gray-400'}`}
+              style={activeTab === 'search' ? { color: activeThemeConfig.primary } : {}}
+            >
+              Search
+            </span>
+          </button>
 
-        {/* 4. Profile & Themes Tab */}
+          {/* 4. Profile Tab */}
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
+              activeTab === 'profile'
+                ? 'apple-glass-lens rounded-full'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <UserIcon 
+              className={`w-5 h-5 ${activeTab === 'profile' ? 'fill-current' : ''}`}
+              style={activeTab === 'profile' ? { color: activeThemeConfig.primary } : {}}
+            />
+            <span 
+              className={`text-[10px] mt-0.5 ${activeTab === 'profile' ? 'font-bold' : 'text-gray-400'}`}
+              style={activeTab === 'profile' ? { color: activeThemeConfig.primary } : {}}
+            >
+              Profile
+            </span>
+          </button>
+        </nav>
+
+        {/* Detached Circular Glass Action Button (matches reference picture) */}
         <button
-          onClick={() => setActiveTab('profile')}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
-            activeTab === 'profile'
-              ? 'apple-play-button text-white shadow-lg'
-              : 'text-gray-400 hover:text-white'
-          }`}
-          style={activeTab === 'profile' ? { boxShadow: `0 0 20px ${activeThemeConfig.glow}` } : {}}
-          title="Profile & Themes"
+          onClick={() => {
+            setTrackToAddToPlaylist(room?.playback_state?.current_queue_item?.track || null);
+            setIsPlaylistModalOpen(true);
+          }}
+          className="w-[64px] h-[64px] rounded-full apple-glass-circle-btn flex items-center justify-center transition-all shadow-2xl active:scale-95 group relative flex-shrink-0"
+          title="Playlists & Quick Add"
+          style={{ borderColor: `${activeThemeConfig.primary}40` }}
         >
-          <UserIcon className="w-5 h-5" />
+          <ListPlus 
+            className="w-6 h-6 transition-transform group-hover:scale-110" 
+            style={{ color: activeThemeConfig.primary }}
+          />
         </button>
-      </nav>
+      </div>
+
+      {/* Playlist Management Modal */}
+      <PlaylistModal
+        isOpen={isPlaylistModalOpen}
+        onClose={() => {
+          setIsPlaylistModalOpen(false);
+          setTrackToAddToPlaylist(null);
+        }}
+        playlists={playlists}
+        onCreatePlaylist={handleCreatePlaylist}
+        onDeletePlaylist={handleDeletePlaylist}
+        onAddTrackToPlaylist={handleAddTrackToPlaylist}
+        onRemoveTrackFromPlaylist={handleRemoveTrackFromPlaylist}
+        onPlayPlaylist={handlePlayPlaylist}
+        trackToAdd={trackToAddToPlaylist}
+        theme={activeThemeConfig}
+      />
     </div>
   );
 };

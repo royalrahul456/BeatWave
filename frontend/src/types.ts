@@ -72,3 +72,13 @@ export interface LyricsData {
   track_name?: string;
   artist_name?: string;
 }
+
+export interface Playlist {
+  id: string;
+  title: string;
+  description?: string;
+  tracks: Track[];
+  cover_url?: string;
+  gradient?: string;
+  created_at: string;
+}
