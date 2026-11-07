@@ -23,14 +23,17 @@ def clean_md(text: str) -> str:
 def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Liquid Glass Player") -> InlineKeyboardButton:
     """
     Creates an inline button compatible with both Private DMs and Group Chats.
-    In groups, direct HTTPS URL opens in Telegram's In-App Browser directly to the room.
+    In groups, uses Telegram direct Mini App scheme (t.me/<bot>/<app>?startapp=<room_id>)
+    which opens inside Telegram without going to an external browser webpage.
     In private chats, web_app launches the native WebApp popup.
     """
-    app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
+    bot_user = bot_settings.BOT_USERNAME or "BeatWave_app"
+    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "app") or "app"
     is_group = chat.type in ("group", "supergroup", "channel")
     if is_group:
-        return InlineKeyboardButton(text=text, url=app_url)
+        return InlineKeyboardButton(text=text, url=f"https://t.me/{bot_user}/{short_name}?startapp={room_id}")
     else:
+        app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
         return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=app_url))
 
 
@@ -259,16 +262,32 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
 
     members_count = room.get("members_count", 1)
     app_btn = make_app_button(chat, room_id)
+    is_group = chat.type in ("group", "supergroup", "channel")
+    bot_user = bot_settings.BOT_USERNAME or "BeatWave_app"
 
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [app_btn],
-            [
-                InlineKeyboardButton(text=f"👥 In Room: {members_count} Listeners", callback_data=f"room_members:{room_id}"),
-                InlineKeyboardButton(text="⏭ Skip", callback_data="ctrl:skip"),
+    if is_group:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [app_btn],
+                [
+                    InlineKeyboardButton(text="🎧 Open via Bot DM", url=f"https://t.me/{bot_user}?start={room_id}"),
+                    InlineKeyboardButton(text="⏭ Skip", callback_data="ctrl:skip"),
+                ],
+                [
+                    InlineKeyboardButton(text=f"👥 In Room: {members_count} Listeners", callback_data=f"room_members:{room_id}"),
+                ]
             ]
-        ]
-    )
+        )
+    else:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [app_btn],
+                [
+                    InlineKeyboardButton(text=f"👥 In Room: {members_count} Listeners", callback_data=f"room_members:{room_id}"),
+                    InlineKeyboardButton(text="⏭ Skip", callback_data="ctrl:skip"),
+                ]
+            ]
+        )
 
     artwork_url = track.get("artwork_url") or "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800"
 

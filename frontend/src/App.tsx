@@ -119,7 +119,15 @@ export const App: React.FC = () => {
         }
 
         // Fetch or create room
-        let targetRoomId = roomIdFromUrl;
+        let targetRoomId = roomIdFromUrl || getInitialRoomId();
+        if (!targetRoomId) {
+          const tgParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+          if (tgParam) {
+            targetRoomId = tgParam;
+            localStorage.setItem('beatwave_active_room_id', tgParam);
+          }
+        }
+
         if (!targetRoomId) {
           const groupRes = await fetch('/api/v1/rooms/group/1001234567890?title=BeatWave+Music+Room', {
             method: 'POST',
