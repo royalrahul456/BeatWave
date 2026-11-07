@@ -22,14 +22,52 @@ async def cmd_start(message: types.Message):
     user = message.from_user
     user_name = user.first_name if user and user.first_name else "Friend"
 
+    args = message.text.split(maxsplit=1) if message.text else []
+    target_param = args[1].strip() if len(args) > 1 else None
+
+    bot_info = await message.bot.get_me()
+    bot_username = bot_info.username or bot_settings.BOT_USERNAME or "BeatWave_app"
+    add_group_url = f"https://t.me/{bot_username}?startgroup=true"
+
+    # User clicked a group link: /start <room_id>
+    if target_param:
+        target_room = await api_client.get_room(target_param, user.id)
+        if target_room:
+            room_id = target_room["id"]
+            group_title = target_room.get("group_title") or "Group Room"
+            app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
+
+            caption = (
+                f"🌊 *Connected to Group Music Room!*\n\n"
+                f"👥 *Room:* {group_title}\n"
+                f"🎧 You are now synced with this group's active audio stream.\n"
+                f"🔊 Any tracks played by the group will stream in your client.\n\n"
+                f"Tap below to launch the Liquid Glass Player:"
+            )
+            kb = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="🌊 Open Group Player", web_app=WebAppInfo(url=app_url)),
+                    ],
+                    [
+                        InlineKeyboardButton(text="➕ Add BeatWave to Group", url=add_group_url),
+                        InlineKeyboardButton(text="ℹ️ Help Guide", callback_data="help_menu"),
+                    ]
+                ]
+            )
+            cover_photo = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&q=80"
+            try:
+                await message.answer_photo(photo=cover_photo, caption=caption, reply_markup=kb, parse_mode="Markdown")
+            except Exception:
+                await message.reply(caption, reply_markup=kb, parse_mode="Markdown")
+            return
+
+    # Regular /start without specific room parameter
     title = chat.title or (user.full_name if user else "BeatWave Room")
     room = await api_client.get_or_create_room(chat.id, user.id, title)
     room_id = room["id"] if room else "default"
 
     app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
-    bot_info = await message.bot.get_me()
-    bot_username = bot_info.username or bot_settings.BOT_USERNAME or "BeatWave_app"
-    add_group_url = f"https://t.me/{bot_username}?startgroup=true"
 
     caption = (
         "✨ ╭── [ 🍭 ꜱ ʏ ꜱ ᴛ ᴇ ᴍ  ɪ ɴ ɪ ᴛ ɪ ᴀ ᴛ ᴇ ᴅ 🐇 ]\n"
@@ -49,7 +87,7 @@ async def cmd_start(message: types.Message):
 
     is_group = chat.type in ("group", "supergroup", "channel")
     if is_group:
-        app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", url=f"https://t.me/{bot_username}?start={room_id}")
+        app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", url=app_url)
     else:
         app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", web_app=WebAppInfo(url=app_url))
 

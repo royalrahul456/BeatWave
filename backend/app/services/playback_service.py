@@ -52,6 +52,30 @@ class PlaybackService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_and_sync_state(
+        db: AsyncSession,
+        room_id: uuid.UUID
+    ) -> Optional[PlaybackState]:
+        """
+        Retrieves authoritative playback state. If the current track's duration
+        has naturally elapsed, automatically advances queue to the next song or sets idle.
+        """
+        playback = await PlaybackService.get_state(db, room_id)
+        if not playback or playback.status != "playing" or not playback.current_queue_item:
+            return playback
+
+        track = playback.current_queue_item.track
+        duration_ms = track.duration_ms if track else 0
+        if duration_ms > 0:
+            current_pos = PlaybackService.calculate_current_position(playback, duration_ms)
+            if current_pos >= duration_ms:
+                success, msg, next_pb = await PlaybackService.skip(db, room_id)
+                if success and next_pb:
+                    await db.commit()
+                    return next_pb
+        return playback
+
+    @staticmethod
     async def pause(db: AsyncSession, room_id: uuid.UUID) -> Tuple[bool, str, Optional[PlaybackState]]:
         playback = await PlaybackService.get_state(db, room_id)
         if not playback or not playback.current_queue_item:

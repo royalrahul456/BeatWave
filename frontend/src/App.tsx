@@ -22,9 +22,29 @@ export const App: React.FC = () => {
 
   const activeThemeConfig = THEMES[currentTheme] || THEMES.purple;
 
-  // Extract query params (e.g. ?room_id=...)
-  const params = new URLSearchParams(window.location.search);
-  const roomIdFromUrl = params.get('room_id');
+  // Extract query params (supports ?room_id=..., Telegram ?tgWebAppStartParam=..., and tg.initDataUnsafe.start_param)
+  const getInitialRoomId = (): string | null => {
+    const params = new URLSearchParams(window.location.search);
+    const qParam = params.get('room_id') || params.get('tgWebAppStartParam');
+    if (qParam) {
+      localStorage.setItem('beatwave_active_room_id', qParam);
+      return qParam;
+    }
+
+    const tg = (window as any).Telegram?.WebApp;
+    const tgParam = tg?.initDataUnsafe?.start_param;
+    if (tgParam) {
+      localStorage.setItem('beatwave_active_room_id', tgParam);
+      return tgParam;
+    }
+
+    const saved = localStorage.getItem('beatwave_active_room_id');
+    if (saved) return saved;
+
+    return null;
+  };
+
+  const roomIdFromUrl = getInitialRoomId();
 
   // Apply theme to document, root CSS variables, & Telegram WebApp
   useEffect(() => {

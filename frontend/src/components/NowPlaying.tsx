@@ -67,6 +67,11 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
 
   // Smooth local scrubber ticker without clock skew
   const [displayPositionMs, setDisplayPositionMs] = useState(0);
+  const hasAutoSkippedRef = useRef(false);
+
+  useEffect(() => {
+    hasAutoSkippedRef.current = false;
+  }, [track?.id]);
 
   // Auto-scroll lyrics container to active synchronized lyric line
   useEffect(() => {
@@ -93,8 +98,11 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
         const elapsedSinceSnapshot = (performance.now() - receivedAt) * rate;
         const current = basePositionMs + elapsedSinceSnapshot;
         setDisplayPositionMs(Math.max(0, Math.min(current, duration)));
-        if (current >= duration && duration > 0 && isDJ) {
-          onControlAction('skip');
+        if (current >= duration && duration > 0) {
+          if (!hasAutoSkippedRef.current) {
+            hasAutoSkippedRef.current = true;
+            onControlAction('skip');
+          }
         }
       };
 
@@ -336,13 +344,29 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
             {track.artist || 'Unknown Artist'}
           </p>
 
-          {/* Glowing Listener Name / Requester Badge */}
-          <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/30 text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-gray-300">Requested by:</span>
-            <span className="text-cyan-300 font-bold tracking-wide">
-              {currentItem?.requested_by?.display_name || currentItem?.requested_by?.username || room?.current_dj?.display_name || "Rahul"}
-            </span>
+          {/* Glowing Badges: Requester & Active In-Room Listeners */}
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-950/70 border border-cyan-500/30 text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-gray-400 text-[11px]">Requested by:</span>
+              <span className="text-cyan-300 font-bold tracking-wide text-xs">
+                {currentItem?.requested_by?.display_name || currentItem?.requested_by?.username || room?.current_dj?.display_name || "Rahul"}
+              </span>
+            </div>
+
+            {/* Active Listeners in Room Badge */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-gray-400 text-[11px]">Listeners:</span>
+              <span className="text-emerald-300 font-semibold text-xs truncate max-w-[130px]">
+                {room?.members && room.members.length > 0
+                  ? room.members.map(m => m.display_name || m.username || 'Listener').join(', ')
+                  : 'You are listening'}
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono">
+                ({room?.members_count || 1})
+              </span>
+            </div>
           </div>
         </div>
 

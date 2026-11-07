@@ -23,15 +23,14 @@ def clean_md(text: str) -> str:
 def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Liquid Glass Player") -> InlineKeyboardButton:
     """
     Creates an inline button compatible with both Private DMs and Group Chats.
-    Telegram strictly forbids web_app in groups, so group chats use a direct t.me link.
+    In groups, direct HTTPS URL opens in Telegram's In-App Browser directly to the room.
+    In private chats, web_app launches the native WebApp popup.
     """
+    app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
     is_group = chat.type in ("group", "supergroup", "channel")
     if is_group:
-        # One-tap jump directly to the Mini App from group chats
-        bot_user = bot_settings.BOT_USERNAME or "BeatWave_app"
-        return InlineKeyboardButton(text=text, url=f"https://t.me/{bot_user}?start={room_id}")
+        return InlineKeyboardButton(text=text, url=app_url)
     else:
-        app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
         return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=app_url))
 
 
@@ -201,10 +200,20 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
 
     user_name = clean_md(user.full_name or user.username or "Listener")
 
+    # Check if a track is already currently playing in this room
+    current_pb = room.get("playback_state")
+    is_actively_playing = (
+        current_pb is not None
+        and current_pb.get("status") == "playing"
+        and current_pb.get("current_queue_item") is not None
+    )
+
     # Multi-track Spotify playlist import
     if "spotify.com" in query and len(results) > 1:
         track = results[0]
-        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=True)
+        # If already playing, queue all tracks; if idle, start first track
+        first_play_now = not is_actively_playing
+        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=first_play_now)
         # Queue upcoming tracks from playlist
         for sub_track in results[1:15]:
             await api_client.add_track_request(room_id, user.id, sub_track["provider"], sub_track["provider_track_id"], play_now=False)
@@ -214,18 +223,20 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
         clean_track_title = clean_md(track.get("title", "Track"))
         clean_artist = clean_md(track.get("artist", "Artist"))
 
+        header = "💚 *Spotify Playlist Queued!*\n\n" if is_actively_playing else "💚 *Spotify Playlist Streaming!*\n\n"
         caption = (
-            "💚 *Spotify Playlist Imported!*\n\n"
-            f"🎵 *Now Streaming:* {clean_track_title}\n"
+            f"{header}"
+            f"🎵 *{'Queued' if is_actively_playing else 'Now Streaming'}:* {clean_track_title}\n"
             f"👤 *Artist:* {clean_artist}\n"
             f"📂 *Queue:* {len(results)} songs added from Spotify\n"
             f"🕛 *Duration:* {dur_str} min\n"
             f"🙍🏻 *Requested by:* {user_name}"
         )
     else:
-        # Direct play: select the top matching track immediately
+        # Direct play or queue: if playing, add to upcoming queue; if idle, stream immediately
         track = results[0]
-        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=True)
+        play_now = not is_actively_playing
+        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=play_now)
 
         duration_ms = track.get("duration_ms", 240000)
         dur_str = format_duration(duration_ms)
@@ -238,8 +249,9 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
         else:
             track_url = f"https://www.google.com/search?q={urllib.parse.quote(clean_track_title + ' song')}"
 
+        header_title = "📂 Added to Queue" if is_actively_playing else "🎵 Started streaming"
         caption = (
-            "🎵 Started streaming\n"
+            f"{header_title}\n"
             f"🎶 Title: [{clean_track_title}]({track_url})\n"
             f"🕛 Duration: {dur_str} min\n"
             f"🙍🏻 Requested by: {user_name}"

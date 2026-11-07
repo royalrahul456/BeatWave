@@ -146,8 +146,8 @@ async def get_room(
     room_members = list(mem_users_res.scalars().all())
     members_dto = [UserResponse.model_validate(m) for m in room_members]
 
-    # Playback state
-    playback = await playback_service.get_state(db, room.id)
+    # Playback state (authoritative server sync auto-advances if song ended)
+    playback = await playback_service.get_and_sync_state(db, room.id)
     playback_dto = None
     if playback:
         track = playback.current_queue_item.track if playback.current_queue_item else None
@@ -187,25 +187,13 @@ async def get_room_state(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    playback = await playback_service.get_state(db, room_id)
+    playback = await playback_service.get_and_sync_state(db, room_id)
     if not playback:
         raise HTTPException(status_code=404, detail="Playback state not found")
 
     track = playback.current_queue_item.track if playback.current_queue_item else None
     duration_ms = track.duration_ms if track else 0
     current_pos = playback_service.calculate_current_position(playback, duration_ms)
-
-    # Server-side authoritative auto-advance:
-    # If the track has naturally reached its duration, automatically advance to next song!
-    if playback.status == "playing" and track and duration_ms > 0 and current_pos >= duration_ms:
-        success, msg, new_pb = await playback_service.skip(db, room_id)
-        if success and new_pb:
-            playback = new_pb
-            track = playback.current_queue_item.track if playback.current_queue_item else None
-            duration_ms = track.duration_ms if track else 0
-            current_pos = playback_service.calculate_current_position(playback, duration_ms)
-        else:
-            current_pos = 0
 
     return PlaybackStateResponse(
         room_id=playback.room_id,
@@ -357,14 +345,26 @@ async def skip_playback(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    is_dj = await room_service.is_dj_or_admin(db, room_id, user.id)
-    if not is_dj:
-        raise HTTPException(status_code=403, detail="Only the DJ can control playback")
+    playback = await playback_service.get_state(db, room_id)
+    if not playback:
+        raise HTTPException(status_code=404, detail="Playback state not found")
 
-    success, msg, playback = await playback_service.skip(db, room_id)
-    if not success or not playback:
+    track = playback.current_queue_item.track if playback.current_queue_item else None
+    duration_ms = track.duration_ms if track else 0
+    current_pos = playback_service.calculate_current_position(playback, duration_ms) if playback else 0
+
+    # If the track has naturally reached its end, any participant's client can trigger the advance
+    track_ended = (duration_ms > 0 and current_pos >= duration_ms - 2000)
+    if not track_ended:
+        is_dj = await room_service.is_dj_or_admin(db, room_id, user.id)
+        if not is_dj:
+            raise HTTPException(status_code=403, detail="Only the DJ can control playback")
+
+    success, msg, pb = await playback_service.skip(db, room_id)
+    if not success or not pb:
         raise HTTPException(status_code=400, detail=msg)
 
+    await db.commit()
     return await get_room_state(room_id, user=user, db=db)
 
 
