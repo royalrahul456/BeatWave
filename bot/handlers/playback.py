@@ -20,7 +20,7 @@ def clean_md(text: str) -> str:
     return text.strip()
 
 
-def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Liquid Glass Player") -> InlineKeyboardButton:
+def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Music Room") -> InlineKeyboardButton:
     """
     Creates an inline button compatible with both Private DMs and Group Chats.
     In groups, uses Telegram direct Mini App scheme (t.me/<bot>/<app>?startapp=<room_id>)

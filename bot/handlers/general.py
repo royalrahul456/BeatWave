@@ -44,12 +44,12 @@ async def cmd_start(message: types.Message):
                 f"👥 *Room:* {group_title}\n"
                 f"🎧 You are now synced with this group's active audio stream.\n"
                 f"🔊 Any tracks played by the group will stream in your client.\n\n"
-                f"Tap below to launch the Liquid Glass Player:"
+                f"Tap below to launch the Music Room:"
             )
             kb = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
-                        InlineKeyboardButton(text="🌊 Open Group Player", web_app=WebAppInfo(url=app_url)),
+                        InlineKeyboardButton(text="🌊 Open Music Room", web_app=WebAppInfo(url=app_url)),
                     ],
                     [
                         InlineKeyboardButton(text="➕ Add BeatWave to Group", url=add_group_url),
@@ -203,7 +203,7 @@ async def cmd_room(message: types.Message):
         f"Tap below to launch your synchronized Liquid Glass player!"
     )
 
-    kb = get_mini_app_keyboard(room_id, "🚀 Open Room in Mini App")
+    kb = get_mini_app_keyboard(room_id, "🌊 Open Music Room")
     await message.reply(text, reply_markup=kb, parse_mode="Markdown")
 
 
