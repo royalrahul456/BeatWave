@@ -28,7 +28,7 @@ def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Liqui
     In private chats, web_app launches the native WebApp popup.
     """
     bot_user = bot_settings.BOT_USERNAME or "BeatWave_app"
-    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "app") or "app"
+    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "beatwave") or "beatwave"
     is_group = chat.type in ("group", "supergroup", "channel")
     if is_group:
         return InlineKeyboardButton(text=text, url=f"https://t.me/{bot_user}/{short_name}?startapp={room_id}")

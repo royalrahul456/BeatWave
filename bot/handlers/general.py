@@ -9,7 +9,7 @@ router = Router()
 
 def get_mini_app_keyboard(room_id: str, text: str = "🌊 Launch BeatWave App", is_group: bool = False) -> InlineKeyboardMarkup:
     bot_username = bot_settings.BOT_USERNAME or "BeatWave_app"
-    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "app") or "app"
+    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "beatwave") or "beatwave"
     if is_group:
         app_button = InlineKeyboardButton(text=text, url=f"https://t.me/{bot_username}/{short_name}?startapp={room_id}")
     else:
@@ -88,7 +88,7 @@ async def cmd_start(message: types.Message):
     )
 
     is_group = chat.type in ("group", "supergroup", "channel")
-    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "app") or "app"
+    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "beatwave") or "beatwave"
     if is_group:
         app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", url=f"https://t.me/{bot_username}/{short_name}?startapp={room_id}")
     else:
