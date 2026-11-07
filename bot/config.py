@@ -9,7 +9,10 @@ def get_default_api_base_url() -> str:
 
 def get_default_mini_app_url() -> str:
     # Check explicitly defined MINI_APP_URL, then Render's automatic external URL, then localhost
-    return os.getenv("MINI_APP_URL", os.getenv("RENDER_EXTERNAL_URL", "http://localhost:3000"))
+    url = os.getenv("MINI_APP_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:3000"
+    if url and not url.startswith(("http://", "https://")):
+        url = f"https://{url}"
+    return url
 
 
 class BotSettings(BaseSettings):
