@@ -398,6 +398,17 @@ export const App: React.FC = () => {
     setActiveTab('now_playing');
   }, [handleRequestTrack]);
 
+  const tabIndex = activeTab === 'home' ? 0 : activeTab === 'now_playing' ? 1 : activeTab === 'search' ? 2 : 3;
+
+  const handleTabClick = (tab: 'home' | 'now_playing' | 'search' | 'profile') => {
+    if (tab !== activeTab) {
+      try {
+        (window as any).Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
+      } catch (_) {}
+      setActiveTab(tab);
+    }
+  };
+
   if (loading) {
     return (
       <div 
@@ -511,23 +522,51 @@ export const App: React.FC = () => {
       {/* Floating Liquid Glass Navigation Bar (Matching exact uploaded reference picture) */}
       <div className="fixed bottom-4 left-4 right-4 z-40 flex items-center gap-2.5 max-w-md mx-auto pointer-events-auto">
         {/* Main Frosted Glass Pill Dock */}
-        <nav className="flex-1 h-[68px] rounded-[34px] apple-glass-dock flex items-center justify-between px-2 py-1 shadow-[0_24px_50px_-8px_rgba(0,0,0,0.85)]">
+        <nav className="relative flex-1 h-[68px] rounded-[34px] apple-glass-dock flex items-center p-1 shadow-[0_24px_50px_-8px_rgba(0,0,0,0.85)]">
+          {/* Fluid Sliding Glass Lens Container */}
+          <div 
+            className="absolute inset-y-[-6px] left-1 pointer-events-none transition-transform will-change-transform z-0"
+            style={{
+              width: 'calc((100% - 8px) / 4)',
+              transform: `translateX(calc(${tabIndex} * 100%))`,
+              transitionDuration: '440ms',
+              transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <div className="w-full h-full px-0.5">
+              <div className="w-full h-full rounded-[30px] apple-glass-lens relative flex flex-col items-center justify-between py-1 overflow-hidden">
+                {/* Top specular refraction notch / meniscus (from reference image) */}
+                <div className="w-8 h-[3.5px] rounded-full bg-black/85 shadow-[0_1px_1px_rgba(255,255,255,0.25)] border-b border-white/20 z-10" />
+                
+                {/* Dynamic radial theme aura */}
+                <div 
+                  className="absolute inset-0 rounded-[30px] opacity-40 blur-sm pointer-events-none"
+                  style={{ background: `radial-gradient(circle at 50% 50%, ${activeThemeConfig.primary} 0%, transparent 70%)` }}
+                />
+
+                {/* Bottom specular refraction notch / meniscus (from reference image) */}
+                <div className="w-8 h-[3.5px] rounded-full bg-black/85 shadow-[0_1px_1px_rgba(255,255,255,0.25)] border-t border-white/20 z-10" />
+              </div>
+            </div>
+          </div>
+
           {/* 1. Home Tab */}
           <button
-            onClick={() => setActiveTab('home')}
-            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
-              activeTab === 'home'
-                ? 'apple-glass-lens rounded-full'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            onClick={() => handleTabClick('home')}
+            className="flex-1 h-full relative z-10 flex flex-col items-center justify-center transition-all duration-300 select-none active:scale-95 group"
           >
-            <Home 
-              className={`w-5 h-5 ${activeTab === 'home' ? 'fill-current' : 'text-gray-400'}`} 
-              style={activeTab === 'home' ? { color: activeThemeConfig.primary } : {}}
-            />
+            <div className={`transition-transform duration-300 ${activeTab === 'home' ? 'scale-110' : 'scale-100 opacity-60 group-hover:opacity-90'}`}>
+              <Home 
+                className={`w-5 h-5 transition-colors duration-300 ${activeTab === 'home' ? 'fill-current' : ''}`}
+                style={{ color: activeTab === 'home' ? activeThemeConfig.primary : '#9ca3af' }}
+              />
+            </div>
             <span 
-              className={`text-[10px] mt-0.5 ${activeTab === 'home' ? 'font-bold' : 'text-gray-400'}`}
-              style={activeTab === 'home' ? { color: activeThemeConfig.primary } : {}}
+              className="text-[10px] mt-0.5 transition-all duration-300 tracking-tight"
+              style={{ 
+                color: activeTab === 'home' ? activeThemeConfig.primary : '#9ca3af',
+                fontWeight: activeTab === 'home' ? 700 : 500
+              }}
             >
               Home
             </span>
@@ -535,23 +574,24 @@ export const App: React.FC = () => {
 
           {/* 2. Play / Music Tab */}
           <button
-            onClick={() => setActiveTab('now_playing')}
-            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
-              activeTab === 'now_playing'
-                ? 'apple-glass-lens rounded-full'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            onClick={() => handleTabClick('now_playing')}
+            className="flex-1 h-full relative z-10 flex flex-col items-center justify-center transition-all duration-300 select-none active:scale-95 group"
           >
-            <Disc3 
-              className={`w-5 h-5 ${activeTab === 'now_playing' ? 'animate-spin' : ''}`}
-              style={{ 
-                animationDuration: '4s',
-                color: activeTab === 'now_playing' ? activeThemeConfig.primary : undefined 
-              }}
-            />
+            <div className={`transition-transform duration-300 ${activeTab === 'now_playing' ? 'scale-110' : 'scale-100 opacity-60 group-hover:opacity-90'}`}>
+              <Disc3 
+                className={`w-5 h-5 transition-colors duration-300 ${activeTab === 'now_playing' ? 'animate-spin' : ''}`}
+                style={{ 
+                  animationDuration: '4s',
+                  color: activeTab === 'now_playing' ? activeThemeConfig.primary : '#9ca3af' 
+                }}
+              />
+            </div>
             <span 
-              className={`text-[10px] mt-0.5 ${activeTab === 'now_playing' ? 'font-bold' : 'text-gray-400'}`}
-              style={activeTab === 'now_playing' ? { color: activeThemeConfig.primary } : {}}
+              className="text-[10px] mt-0.5 transition-all duration-300 tracking-tight"
+              style={{ 
+                color: activeTab === 'now_playing' ? activeThemeConfig.primary : '#9ca3af',
+                fontWeight: activeTab === 'now_playing' ? 700 : 500
+              }}
             >
               Music
             </span>
@@ -559,20 +599,21 @@ export const App: React.FC = () => {
 
           {/* 3. Search Tab */}
           <button
-            onClick={() => setActiveTab('search')}
-            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
-              activeTab === 'search'
-                ? 'apple-glass-lens rounded-full'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            onClick={() => handleTabClick('search')}
+            className="flex-1 h-full relative z-10 flex flex-col items-center justify-center transition-all duration-300 select-none active:scale-95 group"
           >
-            <Search 
-              className="w-5 h-5"
-              style={activeTab === 'search' ? { color: activeThemeConfig.primary } : {}}
-            />
+            <div className={`transition-transform duration-300 ${activeTab === 'search' ? 'scale-110' : 'scale-100 opacity-60 group-hover:opacity-90'}`}>
+              <Search 
+                className="w-5 h-5 transition-colors duration-300"
+                style={{ color: activeTab === 'search' ? activeThemeConfig.primary : '#9ca3af' }}
+              />
+            </div>
             <span 
-              className={`text-[10px] mt-0.5 ${activeTab === 'search' ? 'font-bold' : 'text-gray-400'}`}
-              style={activeTab === 'search' ? { color: activeThemeConfig.primary } : {}}
+              className="text-[10px] mt-0.5 transition-all duration-300 tracking-tight"
+              style={{ 
+                color: activeTab === 'search' ? activeThemeConfig.primary : '#9ca3af',
+                fontWeight: activeTab === 'search' ? 700 : 500
+              }}
             >
               Search
             </span>
@@ -580,20 +621,21 @@ export const App: React.FC = () => {
 
           {/* 4. Profile Tab */}
           <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex-1 h-full flex flex-col items-center justify-center transition-all ${
-              activeTab === 'profile'
-                ? 'apple-glass-lens rounded-full'
-                : 'text-gray-400 hover:text-white'
-            }`}
+            onClick={() => handleTabClick('profile')}
+            className="flex-1 h-full relative z-10 flex flex-col items-center justify-center transition-all duration-300 select-none active:scale-95 group"
           >
-            <UserIcon 
-              className={`w-5 h-5 ${activeTab === 'profile' ? 'fill-current' : ''}`}
-              style={activeTab === 'profile' ? { color: activeThemeConfig.primary } : {}}
-            />
+            <div className={`transition-transform duration-300 ${activeTab === 'profile' ? 'scale-110' : 'scale-100 opacity-60 group-hover:opacity-90'}`}>
+              <UserIcon 
+                className={`w-5 h-5 transition-colors duration-300 ${activeTab === 'profile' ? 'fill-current' : ''}`}
+                style={{ color: activeTab === 'profile' ? activeThemeConfig.primary : '#9ca3af' }}
+              />
+            </div>
             <span 
-              className={`text-[10px] mt-0.5 ${activeTab === 'profile' ? 'font-bold' : 'text-gray-400'}`}
-              style={activeTab === 'profile' ? { color: activeThemeConfig.primary } : {}}
+              className="text-[10px] mt-0.5 transition-all duration-300 tracking-tight"
+              style={{ 
+                color: activeTab === 'profile' ? activeThemeConfig.primary : '#9ca3af',
+                fontWeight: activeTab === 'profile' ? 700 : 500
+              }}
             >
               Profile
             </span>
@@ -603,17 +645,27 @@ export const App: React.FC = () => {
         {/* Detached Circular Glass Action Button (matches reference picture) */}
         <button
           onClick={() => {
+            try {
+              (window as any).Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+            } catch (_) {}
             setTrackToAddToPlaylist(room?.playback_state?.current_queue_item?.track || null);
             setIsPlaylistModalOpen(true);
           }}
-          className="w-[64px] h-[64px] rounded-full apple-glass-circle-btn flex items-center justify-center transition-all shadow-2xl active:scale-95 group relative flex-shrink-0"
+          className="w-[64px] h-[64px] rounded-[26px] apple-glass-circle-btn flex items-center justify-center transition-all duration-200 shadow-2xl active:scale-92 group relative flex-shrink-0"
           title="Playlists & Quick Add"
-          style={{ borderColor: `${activeThemeConfig.primary}40` }}
+          style={{ borderColor: `${activeThemeConfig.primary}45` }}
         >
-          <ListPlus 
-            className="w-6 h-6 transition-transform group-hover:scale-110" 
-            style={{ color: activeThemeConfig.primary }}
-          />
+          <div className="relative">
+            <ListPlus 
+              className="w-6 h-6 transition-transform duration-200 group-hover:scale-110 group-active:scale-90" 
+              style={{ color: activeThemeConfig.primary }}
+            />
+            {/* Subtle glow underneath icon */}
+            <div 
+              className="absolute inset-0 blur-sm opacity-50 pointer-events-none"
+              style={{ backgroundColor: activeThemeConfig.primary }}
+            />
+          </div>
         </button>
       </div>
 
