@@ -7,18 +7,13 @@ from bot.services.api_client import api_client
 router = Router()
 
 
-def get_mini_app_keyboard(room_id: str, text: str = "🌊 Launch BeatWave App") -> InlineKeyboardMarkup:
+def get_mini_app_keyboard(room_id: str, text: str = "🌊 Launch BeatWave App", is_group: bool = False) -> InlineKeyboardMarkup:
     url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=text,
-                    web_app=WebAppInfo(url=url)
-                )
-            ]
-        ]
-    )
+    if is_group:
+        app_button = InlineKeyboardButton(text=text, url=f"https://t.me/{bot_settings.BOT_USERNAME}?start={room_id}")
+    else:
+        app_button = InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))
+    return InlineKeyboardMarkup(inline_keyboard=[[app_button]])
 
 
 @router.message(Command("start"))
@@ -33,7 +28,7 @@ async def cmd_start(message: types.Message):
 
     app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
     bot_info = await message.bot.get_me()
-    bot_username = bot_info.username or "BeatWave_app"
+    bot_username = bot_info.username or bot_settings.BOT_USERNAME or "BeatWave_app"
     add_group_url = f"https://t.me/{bot_username}?startgroup=true"
 
     caption = (
@@ -52,10 +47,16 @@ async def cmd_start(message: types.Message):
         "🌸 ╰── ᴛᴀᴘ ʙᴇʟᴏᴡ ᴛᴏ ʟᴀᴜɴᴄʜ ᴏʀ ᴀᴅᴅ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ !"
     )
 
+    is_group = chat.type in ("group", "supergroup", "channel")
+    if is_group:
+        app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", url=f"https://t.me/{bot_username}?start={room_id}")
+    else:
+        app_button = InlineKeyboardButton(text="🌊 Open BeatWave App", web_app=WebAppInfo(url=app_url))
+
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="🌊 Open BeatWave App", web_app=WebAppInfo(url=app_url)),
+                app_button,
             ],
             [
                 InlineKeyboardButton(text="➕ Add BeatWave to Group", url=add_group_url),

@@ -27,6 +27,14 @@ async def main():
     dp.include_router(general_router)
     dp.include_router(playback_router)
 
+    try:
+        me = await bot.get_me()
+        if me.username:
+            bot_settings.BOT_USERNAME = me.username
+            logger.info(f"Bot authenticated as @{me.username} (ID: {me.id})")
+    except Exception as e:
+        logger.warning(f"Could not fetch bot details: {e}")
+
     # Register native Telegram command menu
     try:
         await bot.set_my_commands([

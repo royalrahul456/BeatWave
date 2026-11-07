@@ -20,6 +20,7 @@ class BotSettings(BaseSettings):
     )
 
     TELEGRAM_BOT_TOKEN: str = "demo_bot_token"
+    BOT_USERNAME: str = "BeatWave_app"
     API_BASE_URL: str = get_default_api_base_url()
     MINI_APP_URL: str = get_default_mini_app_url()
     LOG_LEVEL: str = "INFO"
