@@ -39,6 +39,7 @@ from app.services.room_service import room_service
 from app.services.queue_service import queue_service
 from app.services.playback_service import playback_service
 from app.services.provider import provider_service
+from app.services.lyrics_service import lyrics_service
 
 router = APIRouter()
 
@@ -238,6 +239,23 @@ async def search_catalogue(
 ):
     results = await provider_service.search(body.query)
     return SearchResponse(results=results)
+
+
+@router.get("/rooms/{room_id}/lyrics")
+async def get_room_lyrics(
+    room_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    playback = await playback_service.get_state(db, room_id)
+    if not playback or not playback.current_queue_item:
+        return {"found": False, "synced": False, "lines": [], "plain": "No track currently playing"}
+
+    track = playback.current_queue_item.track
+    if not track:
+        return {"found": False, "synced": False, "lines": [], "plain": "No track details available"}
+
+    return await lyrics_service.get_lyrics(track.title, track.artist or "", track.duration_ms or 0)
 
 
 @router.post("/rooms/{room_id}/requests", response_model=QueueItemResponse)

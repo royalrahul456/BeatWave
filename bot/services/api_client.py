@@ -97,12 +97,13 @@ class BackendAPIClient:
         room_id: str,
         user_id: int,
         provider: str,
-        provider_track_id: str
+        provider_track_id: str,
+        play_now: bool = True
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         res = await self._request(
             "POST",
             f"rooms/{room_id}/requests",
-            json={"provider": provider, "provider_track_id": provider_track_id},
+            json={"provider": provider, "provider_track_id": provider_track_id, "play_now": play_now},
             headers=self._headers(user_id)
         )
         if res and res.status_code == 200:

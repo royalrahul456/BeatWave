@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, Heart, Play, Pause, SkipForward, SkipBack, 
   Shuffle, Repeat, RotateCcw, RotateCw, Volume2, VolumeX, ShieldCheck,
-  ListMusic, Trash2, Plus, Disc3
+  ListMusic, Trash2, Plus, Disc3, Mic2, Sparkles
 } from 'lucide-react';
-import { Room, QueueItem, ThemeConfig } from '../types';
+import { Room, QueueItem, ThemeConfig, LyricsData } from '../types';
 
 interface NowPlayingProps {
   room?: Room;
@@ -35,9 +35,48 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
   const [isShuffle, setIsShuffle] = useState(false);
   const [volume, setVolume] = useState(85);
   const [showVolume, setShowVolume] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [lyricsData, setLyricsData] = useState<LyricsData | null>(null);
+  const [loadingLyrics, setLoadingLyrics] = useState(false);
+
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
+  const activeLineRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch real-time synced lyrics when track changes
+  useEffect(() => {
+    if (!room?.id || !track?.id) return;
+    let isCancelled = false;
+    setLoadingLyrics(true);
+
+    fetch(`/api/v1/rooms/${room.id}/lyrics`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!isCancelled && data) {
+          setLyricsData(data);
+        }
+      })
+      .catch(err => {
+        console.warn('Lyrics fetch error:', err);
+      })
+      .finally(() => {
+        if (!isCancelled) setLoadingLyrics(false);
+      });
+
+    return () => { isCancelled = true; };
+  }, [room?.id, track?.id]);
 
   // Smooth local scrubber ticker without clock skew
   const [displayPositionMs, setDisplayPositionMs] = useState(0);
+
+  // Auto-scroll lyrics container to active synchronized lyric line
+  useEffect(() => {
+    if (showLyrics && activeLineRef.current && lyricsContainerRef.current) {
+      activeLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [displayPositionMs, showLyrics]);
 
   useEffect(() => {
     if (!playback) return;
@@ -93,6 +132,20 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
     onControlAction('seek', { position_ms: newPos });
   };
 
+  // Active synchronized lyric line index based on current playback position
+  const activeLyricIndex = useMemo(() => {
+    if (!lyricsData || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
+    let activeIdx = -1;
+    for (let i = 0; i < lyricsData.lines.length; i++) {
+      if (displayPositionMs >= lyricsData.lines[i].time_ms) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+    return activeIdx;
+  }, [lyricsData, displayPositionMs]);
+
   // Filter out currently playing item to show upcoming in queue
   const upcomingQueue = queue.filter(item => item.status === 'queued');
 
@@ -126,7 +179,7 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
 
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto px-5 pt-1 pb-32">
-      {/* Top Header Bar matching picture: Left Arrow, "Now Playing", Volume/Mute Icon */}
+      {/* Top Header Bar matching picture: Left Arrow, "Now Playing", Lyrics & Volume Icons */}
       <div className="w-full flex items-center justify-between py-3 mb-2">
         <button
           onClick={onBack}
@@ -136,17 +189,36 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
           <ChevronLeft className="w-5 h-5 -translate-x-0.5" />
         </button>
 
-        <h3 className="text-base font-semibold text-white tracking-wide">
-          Now Playing
-        </h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-semibold text-white tracking-wide">
+            {showLyrics ? "Synced Lyrics" : "Now Playing"}
+          </h3>
+          {showLyrics && (
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          )}
+        </div>
 
-        <button
-          onClick={() => setShowVolume(!showVolume)}
-          className="w-10 h-10 rounded-full apple-glass-pill flex items-center justify-center text-gray-300 hover:text-white transition-all active:scale-95"
-          title="Adjust Volume"
-        >
-          <Volume2 className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Synced Lyrics Toggle Button */}
+          <button
+            onClick={() => setShowLyrics(!showLyrics)}
+            className={`w-10 h-10 rounded-full apple-glass-pill flex items-center justify-center transition-all active:scale-95 ${
+              showLyrics ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/50' : 'text-gray-300 hover:text-white'
+            }`}
+            title={showLyrics ? "Show Vinyl Artwork" : "Show Synced Lyrics"}
+          >
+            <Mic2 className="w-4 h-4" />
+          </button>
+
+          {/* Volume Button */}
+          <button
+            onClick={() => setShowVolume(!showVolume)}
+            className="w-10 h-10 rounded-full apple-glass-pill flex items-center justify-center text-gray-300 hover:text-white transition-all active:scale-95"
+            title="Adjust Volume"
+          >
+            <Volume2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Volume Bar if toggled */}
@@ -166,30 +238,93 @@ export const NowPlaying: React.FC<NowPlayingProps> = ({
         </div>
       )}
 
-      {/* Giant Circular Artwork with Double Glass Ring Halo (Matches uploaded picture) */}
-      <div className="relative my-3 flex items-center justify-center">
-        {/* Soft Radial Ambient Glow */}
-        <div 
-          className="absolute w-72 h-72 rounded-full blur-3xl opacity-40 pointer-events-none transition-all duration-700"
-          style={{ backgroundColor: theme.primary }}
-        />
+      {/* Central View: Either Circular Artwork OR Liquid Glass Synced Lyrics */}
+      {!showLyrics ? (
+        /* Giant Circular Artwork with Double Glass Ring Halo */
+        <div className="relative my-3 flex items-center justify-center">
+          {/* Soft Radial Ambient Glow */}
+          <div 
+            className="absolute w-72 h-72 rounded-full blur-3xl opacity-40 pointer-events-none transition-all duration-700"
+            style={{ backgroundColor: theme.primary }}
+          />
 
-        {/* Outer Frosted Glass Ring */}
-        <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full p-3 apple-glass circular-halo-ring flex items-center justify-center relative">
-          {/* Inner Circular Artwork */}
-          <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/20 shadow-2xl relative">
-            <img
-              src={track.artwork_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=85"}
-              alt={track.title}
-              className={`w-full h-full object-cover transition-transform duration-700 ${
-                isPlaying ? 'scale-105' : 'scale-100'
-              }`}
-            />
-            {/* Glass reflection overlay */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/20 pointer-events-none" />
+          {/* Outer Frosted Glass Ring */}
+          <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full p-3 apple-glass circular-halo-ring flex items-center justify-center relative">
+            {/* Inner Circular Artwork */}
+            <div className="w-full h-full rounded-full overflow-hidden border-2 border-white/20 shadow-2xl relative">
+              <img
+                src={track.artwork_url || "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&q=85"}
+                alt={track.title}
+                className={`w-full h-full object-cover transition-transform duration-700 ${
+                  isPlaying ? 'scale-105' : 'scale-100'
+                }`}
+              />
+              {/* Glass reflection overlay */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/20 pointer-events-none" />
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Liquid Glass Synced Lyrics Display */
+        <div className="relative my-3 w-full h-64 sm:h-72 rounded-[32px] apple-glass border border-white/10 p-4 flex flex-col overflow-hidden shadow-2xl">
+          {/* Ambient Glow */}
+          <div 
+            className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none"
+            style={{ backgroundColor: theme.primary }}
+          />
+          
+          {loadingLyrics ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-400">
+              <span className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs font-mono">Fetching synchronized lyrics...</p>
+            </div>
+          ) : lyricsData && lyricsData.lines && lyricsData.lines.length > 0 ? (
+            <div 
+              ref={lyricsContainerRef}
+              className="flex-1 overflow-y-auto space-y-4 px-2 py-8 scroll-smooth no-scrollbar"
+            >
+              {lyricsData.lines.map((line, idx) => {
+                const isCurrent = idx === activeLyricIndex;
+                return (
+                  <div
+                    key={idx}
+                    ref={isCurrent ? activeLineRef : null}
+                    onClick={() => {
+                      if (isDJ && lyricsData.synced) {
+                        setDisplayPositionMs(line.time_ms);
+                        onControlAction('seek', { position_ms: line.time_ms });
+                      }
+                    }}
+                    className={`transition-all duration-300 text-center select-none ${isDJ ? 'cursor-pointer hover:opacity-100' : ''} ${
+                      isCurrent 
+                        ? 'text-cyan-300 text-lg sm:text-xl font-bold scale-105 drop-shadow-[0_0_14px_rgba(6,182,212,0.7)]' 
+                        : 'text-gray-400 text-sm sm:text-base font-medium opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    {line.text}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+              <Sparkles className="w-8 h-8 text-cyan-400/60 mb-2" />
+              <p className="text-xs text-gray-300 font-medium leading-relaxed max-w-xs">
+                {lyricsData?.plain || "No synchronized lyrics found for this track."}
+              </p>
+            </div>
+          )}
+
+          {/* Bottom badge */}
+          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-gray-400 px-1">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              {lyricsData?.synced ? "Synced Studio Lyrics" : "Plain Lyrics"}
+            </span>
+            <span className="text-[10px] text-gray-500">Tap line to jump</span>
+          </div>
+        </div>
+      )}
 
       {/* Track Title, Artist & Glass Heart Button (Exact layout from uploaded picture) */}
       <div className="w-full flex items-center justify-between px-2 mt-4 mb-2">

@@ -58,3 +58,17 @@ export interface Room {
   members?: User[];
   playback_state?: PlaybackState;
 }
+
+export interface LyricLine {
+  time_ms: number;
+  text: string;
+}
+
+export interface LyricsData {
+  found: boolean;
+  synced: boolean;
+  lines: LyricLine[];
+  plain: string;
+  track_name?: string;
+  artist_name?: string;
+}

@@ -145,32 +145,52 @@ async def _search_and_display(message: types.Message, chat: types.Chat, user: ty
         await status_msg.edit_text(f"❌ No tracks found for *{query}*. Please try another search term.", parse_mode="Markdown")
         return
 
-    # Direct play: select the top matching track immediately
-    track = results[0]
-    await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"])
-
-    # Duration formatting
-    duration_ms = track.get("duration_ms", 240000)
-    dur_str = format_duration(duration_ms)
-
-    # Track URL
-    provider = track.get("provider", "music")
-    pid = track.get("provider_track_id", "")
-    if provider == "youtube":
-        track_url = f"https://www.youtube.com/watch?v={pid}"
+    # Multi-track Spotify playlist import
+    if "spotify.com" in query and len(results) > 1:
+        track = results[0]
+        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=True)
+        # Queue upcoming tracks from playlist
+        for sub_track in results[1:15]:
+            await api_client.add_track_request(room_id, user.id, sub_track["provider"], sub_track["provider_track_id"], play_now=False)
+        
+        user_name = user.full_name or user.username or "Listener"
+        duration_ms = track.get("duration_ms", 240000)
+        dur_str = format_duration(duration_ms)
+        caption = (
+            "💚 *Spotify Playlist Imported!*\n\n"
+            f"🎵 *Now Streaming:* {track['title']}\n"
+            f"👤 *Artist:* {track.get('artist', 'Artist')}\n"
+            f"📂 *Queue:* {len(results)} songs added from Spotify\n"
+            f"🕛 *Duration:* {dur_str} min\n"
+            f"🙍🏻 *Requested by:* {user_name}"
+        )
     else:
-        track_url = f"https://www.google.com/search?q={urllib.parse.quote(track['title'] + ' song')}"
+        # Direct play: select the top matching track immediately
+        track = results[0]
+        await api_client.add_track_request(room_id, user.id, track["provider"], track["provider_track_id"], play_now=True)
 
-    # User display name
-    user_name = user.full_name or user.username or "Listener"
-    track_title = track.get("title", query)
+        # Duration formatting
+        duration_ms = track.get("duration_ms", 240000)
+        dur_str = format_duration(duration_ms)
 
-    caption = (
-        "🎵 Started streaming\n"
-        f"🎶 Title: [{track_title}]({track_url})\n"
-        f"🕛 Duration: {dur_str} min\n"
-        f"🙍🏻 Requested by: {user_name}"
-    )
+        # Track URL
+        provider = track.get("provider", "music")
+        pid = track.get("provider_track_id", "")
+        if provider == "youtube":
+            track_url = f"https://www.youtube.com/watch?v={pid}"
+        else:
+            track_url = f"https://www.google.com/search?q={urllib.parse.quote(track['title'] + ' song')}"
+
+        # User display name
+        user_name = user.full_name or user.username or "Listener"
+        track_title = track.get("title", query)
+
+        caption = (
+            "🎵 Started streaming\n"
+            f"🎶 Title: [{track_title}]({track_url})\n"
+            f"🕛 Duration: {dur_str} min\n"
+            f"🙍🏻 Requested by: {user_name}"
+        )
 
     members_count = room.get("members_count", 1)
     app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
@@ -420,3 +440,48 @@ async def _handle_dj_action(message: types.Message, action: str, success_text: s
         await message.reply(f"{success_text}")
     else:
         await message.reply(f"❌ {msg}")
+
+
+@router.message(Command("lyrics"))
+async def cmd_lyrics(message: types.Message):
+    chat = message.chat
+    user = message.from_user
+
+    title = chat.title or user.full_name or "BeatWave Room"
+    room = await api_client.get_or_create_room(chat.id, user.id, title)
+    if not room:
+        await message.reply("❌ Error connecting to room.")
+        return
+
+    room_id = room["id"]
+    state = await api_client.get_playback_state(room_id, user.id)
+    if not state or not state.get("current_queue_item"):
+        await message.reply("🔇 *Nothing is currently playing.*", parse_mode="Markdown")
+        return
+
+    track = state["current_queue_item"].get("track", {})
+    status_msg = await message.reply(f"📜 Fetching lyrics for *{track.get('title', 'Track')}*...", parse_mode="Markdown")
+
+    res = await api_client._request("GET", f"rooms/{room_id}/lyrics", headers=api_client._headers(user.id))
+    if not res or res.status_code != 200:
+        await status_msg.edit_text("❌ Lyrics currently unavailable for this track.")
+        return
+
+    data = res.json()
+    plain = data.get("plain", "")
+    if not plain and data.get("lines"):
+        plain = "\n".join(l["text"] for l in data["lines"] if l.get("text"))
+
+    if not plain:
+        plain = f"Lyrics not available for {track.get('title')}."
+
+    if len(plain) > 3800:
+        plain = plain[:3800] + "\n\n..."
+
+    synced_badge = "⏱ *Synced Lyrics*" if data.get("synced") else "📝 *Plain Lyrics*"
+    await status_msg.edit_text(
+        f"🎵 *{track.get('title')}* — {track.get('artist', 'Artist')}\n"
+        f"{synced_badge}\n\n"
+        f"{plain}",
+        parse_mode="Markdown"
+    )
