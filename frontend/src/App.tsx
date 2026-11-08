@@ -161,7 +161,22 @@ export const App: React.FC = () => {
           }
         }
 
-        if (!targetRoomId) {
+        let rData = null;
+        if (targetRoomId) {
+          const roomRes = await fetch(`/api/v1/rooms/${targetRoomId}`, {
+            headers: { 'Authorization': `Bearer ${authData.token}` }
+          });
+          if (roomRes.ok) {
+            rData = await roomRes.json();
+          } else {
+            // Stale or invalid room ID in localStorage/param - clear it so we create/fetch a valid room
+            localStorage.removeItem('beatwave_active_room_id');
+            targetRoomId = null;
+          }
+        }
+
+        // If targetRoomId was invalid, missing, or returned 404, get or create the default room
+        if (!rData) {
           const groupRes = await fetch('/api/v1/rooms/group/1001234567890?title=BeatWave+Music+Room', {
             method: 'POST',
             headers: {
@@ -170,21 +185,15 @@ export const App: React.FC = () => {
             }
           });
           if (groupRes.ok) {
-            const groupData = await groupRes.json();
-            targetRoomId = groupData.id;
+            rData = await groupRes.json();
+            targetRoomId = rData.id;
+            localStorage.setItem('beatwave_active_room_id', rData.id);
           }
         }
 
-        if (targetRoomId) {
-          const roomRes = await fetch(`/api/v1/rooms/${targetRoomId}`, {
-            headers: { 'Authorization': `Bearer ${authData.token}` }
-          });
-          if (roomRes.ok) {
-            const rData = await roomRes.json();
-            setRoom(rData);
-          }
-
-          const qRes = await fetch(`/api/v1/rooms/${targetRoomId}/queue`, {
+        if (rData) {
+          setRoom(rData);
+          const qRes = await fetch(`/api/v1/rooms/${rData.id}/queue`, {
             headers: { 'Authorization': `Bearer ${authData.token}` }
           });
           if (qRes.ok) {

@@ -22,19 +22,11 @@ def clean_md(text: str) -> str:
 
 def make_app_button(chat: types.Chat, room_id: str, text: str = "🌊 Open Music Room") -> InlineKeyboardButton:
     """
-    Creates an inline button compatible with both Private DMs and Group Chats.
-    In groups, uses Telegram direct Mini App scheme (t.me/<bot>/<app>?startapp=<room_id>)
-    which opens inside Telegram without going to an external browser webpage.
-    In private chats, web_app launches the native WebApp popup.
+    Creates an inline button launching the native Telegram Mini App.
+    Uses web_app=WebAppInfo to open the player directly in Telegram without external redirects.
     """
-    bot_user = bot_settings.BOT_USERNAME or "BeatWave_app"
-    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "beatwave") or "beatwave"
-    is_group = chat.type in ("group", "supergroup", "channel")
-    if is_group:
-        return InlineKeyboardButton(text=text, url=f"https://t.me/{bot_user}/{short_name}?startapp={room_id}")
-    else:
-        app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
-        return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=app_url))
+    app_url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
+    return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=app_url))
 
 
 def make_progress_bar(current_ms: int, total_ms: int, bar_length: int = 12) -> str:

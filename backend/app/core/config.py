@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # Telegram
-    TELEGRAM_BOT_TOKEN: str = "demo_bot_token"
+    TELEGRAM_BOT_TOKEN: str = "9127560701:AAFK_FBkKgN_MsfNsC9XfgMMLJbG8CeOWqs"
     TELEGRAM_WEBHOOK_SECRET: str = ""
     TELEGRAM_WEBHOOK_URL: str = ""
 

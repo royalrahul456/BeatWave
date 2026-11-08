@@ -8,13 +8,8 @@ router = Router()
 
 
 def get_mini_app_keyboard(room_id: str, text: str = "🌊 Launch BeatWave App", is_group: bool = False) -> InlineKeyboardMarkup:
-    bot_username = bot_settings.BOT_USERNAME or "BeatWave_app"
-    short_name = getattr(bot_settings, "MINI_APP_SHORT_NAME", "beatwave") or "beatwave"
-    if is_group:
-        app_button = InlineKeyboardButton(text=text, url=f"https://t.me/{bot_username}/{short_name}?startapp={room_id}")
-    else:
-        url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
-        app_button = InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))
+    url = f"{bot_settings.MINI_APP_URL}?room_id={room_id}"
+    app_button = InlineKeyboardButton(text=text, web_app=WebAppInfo(url=url))
     return InlineKeyboardMarkup(inline_keyboard=[[app_button]])
 
 
